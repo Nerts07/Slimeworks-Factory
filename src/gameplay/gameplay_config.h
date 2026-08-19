@@ -25,6 +25,7 @@ typedef struct GameplayRules {
     float buildWorldLimit;
     float pumpSourceRadius;
     float interactionRange;
+    float upgradeRange;
 } GameplayRules;
 
 static inline GameplayBindings GameplayDefaultBindings(void)
@@ -36,7 +37,8 @@ static inline GameplayBindings GameplayDefaultBindings(void)
 static inline GameplayRules GameplayDefaultRules(void)
 {
     return (GameplayRules){ .gatePosition = { 20.0f, 0.0f, -3.0f }, .gateInteractionRadius = 5.7f,
-                            .buildWorldLimit = 58.0f, .pumpSourceRadius = 3.2f, .interactionRange = 4.0f };
+                            .buildWorldLimit = 58.0f, .pumpSourceRadius = 3.2f, .interactionRange = 4.0f,
+                            .upgradeRange = 2.4f };
 }
 
 #endif

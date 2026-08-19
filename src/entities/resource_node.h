@@ -4,6 +4,7 @@
 #include <raylib.h>
 #include "../economy/economy.h"
 #include "../world/level.h"
+#include "../render/game_visuals.h"
 
 #define RESOURCE_NODE_MAX 16
 
@@ -28,6 +29,6 @@ void ResourceNodesAlignToLevel(ResourceNodeSystem *system, const Level *level);
 void ResourceNodesUpdate(ResourceNodeSystem *system, float dt, bool zoneTwoUnlocked);
 int ResourceNodesRaycast(const ResourceNodeSystem *system, Ray ray, float maxDistance, float *outDistance);
 bool ResourceNodeHarvest(ResourceNode *node, Economy *economy);
-void ResourceNodesDraw(const ResourceNodeSystem *system);
+void ResourceNodesDraw(const ResourceNodeSystem *system, const GameVisuals *visuals);
 
 #endif

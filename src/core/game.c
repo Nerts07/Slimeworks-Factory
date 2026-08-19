@@ -12,8 +12,8 @@ static void GameDraw(const Game *game)
     BeginDrawing();
     ClearBackground((Color){ 185, 214, 225, 255 });
     BeginMode3D(game->playerSystem.camera);
-    LevelDraw(&game->level);
-    GameStateDrawWorld(&game->state, game->gameplay.buildMode, game->gameplay.selectedBuild, preview, previewValid);
+    LevelDraw(&game->level, &game->visuals);
+    GameStateDrawWorld(&game->state, &game->visuals, game->gameplay.buildMode, game->gameplay.selectedBuild, preview, previewValid);
     EndMode3D();
     const Building *nearby = BuildingsFindNearest(&game->state.buildings, game->playerSystem.player.position, 2.4f);
     UiDrawHud(&game->playerSystem.player, &game->state, game->playerSystem.mouseCaptured,
@@ -52,6 +52,7 @@ void GameInit(Game *game)
     *game = (Game){ 0 };
     InitWindow(1280, 720, "Slimeworks Factory");
     SetTargetFPS(60);
+    GameVisualsInit(&game->visuals);
     LevelCatalogRefresh(&game->levelCatalog);
 }
 
@@ -75,5 +76,6 @@ void GameRun(Game *game)
 void GameShutdown(Game *game)
 {
     LevelShutdown(&game->level);
+    GameVisualsShutdown(&game->visuals);
     CloseWindow();
 }

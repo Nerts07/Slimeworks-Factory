@@ -56,10 +56,11 @@ bool GameStateCollectRareSlime(GameState *state, Ray ray)
     return true;
 }
 
-void GameStateDrawWorld(const GameState *state, bool buildMode, BuildType selected, Vector3 previewPosition, bool previewValid)
+void GameStateDrawWorld(const GameState *state, const GameVisuals *visuals, bool buildMode, BuildType selected,
+                        Vector3 previewPosition, bool previewValid)
 {
-    ResourceNodesDraw(&state->nodes);
-    BuildingsDraw(&state->buildings, buildMode, selected, previewPosition, previewValid);
+    ResourceNodesDraw(&state->nodes, visuals);
+    BuildingsDraw(&state->buildings, visuals, buildMode, selected, previewPosition, previewValid);
 
     DrawCylinderWires((Vector3){ 0.0f, 0.09f, 0.0f }, 6.1f, 6.1f, 0.04f, 48, Fade(SKYBLUE, 0.55f));
     Vector3 objective = { 0.0f, 1.8f, 0.0f };
@@ -75,7 +76,10 @@ void GameStateDrawWorld(const GameState *state, bool buildMode, BuildType select
     DrawSphere((Vector3){ objective.x, objective.y + 2.0f + 0.15f*sinf((float)GetTime()*4.0f), objective.z }, 0.16f, GOLD);
     if (state->rareSlime.active) {
         float pulse = 0.52f + 0.09f * sinf((float)GetTime() * 5.0f);
-        DrawSphere(state->rareSlime.position, pulse, VIOLET);
-        DrawSphereWires(state->rareSlime.position, pulse + 0.07f, 10, 10, GOLD);
+        if (!GameVisualsDraw(visuals, GAME_VISUAL_RARE_SLIME, state->rareSlime.position, 0.0f,
+                             (Vector3){ 1, 1, 1 }, WHITE)) {
+            DrawSphere(state->rareSlime.position, pulse, VIOLET);
+            DrawSphereWires(state->rareSlime.position, pulse + 0.07f, 10, 10, GOLD);
+        }
     }
 }

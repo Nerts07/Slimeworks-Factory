@@ -103,7 +103,19 @@ static void UpdateBuildInput(GameplaySystem *system)
         else Notify(system, "Cannot build here or not enough ore");
     }
     if (IsKeyPressed(system->bindings.removePipe)) Notify(system, BuildingsTryRemovePipe(&system->state->buildings, &system->state->economy, preview) ? "Pipe removed (+0.5 ore)" : "No pipe nearby");
-    if (IsKeyPressed(system->bindings.upgrade)) Notify(system, BuildingsTryUpgrade(&system->state->buildings, &system->state->economy, preview) ? "Station upgraded" : "Need 14 slime or a nearby level 1 station");
+}
+
+static void UpdateUpgradeInput(GameplaySystem *system)
+{
+    if (!IsKeyPressed(system->bindings.upgrade)) return;
+    BuildingUpgradeResult result = BuildingsTryUpgrade(&system->state->buildings, &system->state->economy,
+                                                       system->playerSystem->player.position, system->rules.upgradeRange);
+    switch (result) {
+        case BUILDING_UPGRADE_OK: Notify(system, "Station upgraded to level 2"); break;
+        case BUILDING_UPGRADE_NO_STATION: Notify(system, "Move closer to a station, then press U"); break;
+        case BUILDING_UPGRADE_MAX_LEVEL: Notify(system, "This station is already at maximum level"); break;
+        case BUILDING_UPGRADE_NOT_ENOUGH_SLIME: Notify(system, "Upgrade costs 14 slime"); break;
+    }
 }
 
 static void UpdateWorldInteraction(GameplaySystem *system, float deltaTime)
@@ -143,10 +155,16 @@ void GameplaySystemUpdate(void *context, float deltaTime)
 
     if (system->inputGate && system->inputGate->gameplayBlocked) return;
 
-    if (IsKeyPressed(system->bindings.save)) Notify(system, SaveGameWrite(system->state) ? "Progress saved" : "Could not save progress");
-    if (IsKeyPressed(system->bindings.load)) Notify(system, SaveGameRead(system->state) ? "Progress loaded" : "No valid save found");
+    if (IsKeyPressed(system->bindings.save))
+        Notify(system, SaveGameWrite(system->state, &system->playerSystem->player) ? "Progress and player position saved" : "Could not save progress");
+    if (IsKeyPressed(system->bindings.load)) {
+        bool loaded = SaveGameRead(system->state, &system->playerSystem->player, system->level);
+        if (loaded) PlayerCameraUpdate(&system->playerSystem->camera, &system->playerSystem->player);
+        Notify(system, loaded ? "Progress, position and camera loaded" : "No valid save found");
+    }
     if (IsKeyPressed(system->bindings.toggleHelp)) system->helpOpen = !system->helpOpen;
     if (IsKeyPressed(system->bindings.toggleBuild)) { system->buildMode = !system->buildMode; system->harvestProgress = 0.0f; }
+    UpdateUpgradeInput(system);
     if (system->buildMode) { UpdateBuildInput(system); system->targetedNode = -1; }
     else UpdateWorldInteraction(system, deltaTime);
 

@@ -6,11 +6,13 @@
 #include "input_gate.h"
 #include "../world/level.h"
 #include "../world/level_catalog.h"
+#include "../render/game_visuals.h"
 #include "update_loop.h"
 
 typedef struct Game {
     Level level;
     LevelCatalog levelCatalog;
+    GameVisuals visuals;
     GameState state;
     InputGate inputGate;
     PlayerSystem playerSystem;

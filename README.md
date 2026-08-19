@@ -55,3 +55,4 @@ Developer console открывается `F4`; команды и навигац�
 * `src/ui` — HUD, подсказки и уведомления.
 * `src/player/player_state`, `player_input`, `player_motor`, `player_camera`, `player_system` — состояние, ввод, физика, камера и их единый `PlayerSystemUpdate`.
 * `src/world` — геометрия уровня и данные спавна.
+* `src/render/game_visuals` и `visual_assets.def` — необязательные модели с автоматическим fallback на текущие примитивы. Инструкция: [MODEL_REPLACEMENT.md](MODEL_REPLACEMENT.md).

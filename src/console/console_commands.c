@@ -92,10 +92,16 @@ static bool CommandTeleport(ConsoleExecutionContext *context, int argc, const ch
 }
 
 static bool CommandSave(ConsoleExecutionContext *context, int argc, const char *argv[], char *message, int messageSize)
-{ (void)argc; (void)argv; bool ok = SaveGameWrite(context->state); snprintf(message, (size_t)messageSize, ok ? "Saved" : "Save failed"); return ok; }
+{ (void)argc; (void)argv; bool ok = SaveGameWrite(context->state, &context->playerSystem->player); snprintf(message, (size_t)messageSize, ok ? "Saved progress, player position and view" : "Save failed"); return ok; }
 
 static bool CommandLoad(ConsoleExecutionContext *context, int argc, const char *argv[], char *message, int messageSize)
-{ (void)argc; (void)argv; bool ok = SaveGameRead(context->state); snprintf(message, (size_t)messageSize, ok ? "Loaded" : "No valid save"); return ok; }
+{
+    (void)argc; (void)argv;
+    bool ok = SaveGameRead(context->state, &context->playerSystem->player, context->level);
+    if (ok) PlayerCameraUpdate(&context->playerSystem->camera, &context->playerSystem->player);
+    snprintf(message, (size_t)messageSize, ok ? "Loaded progress, player position and view" : "No valid save");
+    return ok;
+}
 
 static bool CommandUnlockZone(ConsoleExecutionContext *context, int argc, const char *argv[], char *message, int messageSize)
 { (void)argc; (void)argv; bool ok = GameStateTryUnlockZoneTwo(context->state); snprintf(message, (size_t)messageSize, ok ? "Acid Works unlocked" : "Need 55 slime or already unlocked"); return ok; }

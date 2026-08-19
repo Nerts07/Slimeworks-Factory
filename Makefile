@@ -15,8 +15,8 @@ main: $(SOURCES)
 run: main
 	./main
 
-tests/building_network_test: tests/building_network_test.c src/build/building.c src/build/building.h src/economy/economy.c src/economy/economy.h
-	$(CC) $(CFLAGS) tests/building_network_test.c src/build/building.c src/economy/economy.c -o tests/building_network_test $(RAYLIB_LIBS) -lm
+tests/building_network_test: tests/building_network_test.c src/build/building.c src/build/building.h src/economy/economy.c src/economy/economy.h src/render/game_visuals.c src/render/game_visuals.h
+	$(CC) $(CFLAGS) tests/building_network_test.c src/build/building.c src/economy/economy.c src/render/game_visuals.c -o tests/building_network_test $(RAYLIB_LIBS) -lm
 
 test: tests/building_network_test
 	./tests/building_network_test

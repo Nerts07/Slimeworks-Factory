@@ -2,6 +2,7 @@
 #define LEVEL_H
 
 #include <raylib.h>
+#include "../render/game_visuals.h"
 
 #define LEVEL_MAX_PLATFORMS 96
 #define LEVEL_MAX_RAMPS 96
@@ -88,7 +89,7 @@ void LevelInit(Level *level);
 void LevelGenerate(Level *level, unsigned int seed);
 void LevelShutdown(Level *level);
 bool LevelLoadFromFile(Level *level, const char *filePath);
-void LevelDraw(const Level *level);
+void LevelDraw(const Level *level, const GameVisuals *visuals);
 Vector3 LevelGetSpawnPoint(const Level *level);
 bool LevelGetLandmark(const Level *level, const char *name, Vector3 *outPosition);
 bool LevelFindMarker(const Level *level, const char *nameOrTag, Vector3 *outPosition);

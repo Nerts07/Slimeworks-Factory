@@ -91,15 +91,27 @@ bool ResourceNodeHarvest(ResourceNode *node, Economy *economy)
     return true;
 }
 
-void ResourceNodesDraw(const ResourceNodeSystem *system)
+static GameVisualKind ResourceVisual(ResourceType type)
+{
+    switch (type) {
+        case RESOURCE_GREEN_ORE: return GAME_VISUAL_ORE_GREEN;
+        case RESOURCE_ACID_ORE: return GAME_VISUAL_ORE_ACID;
+        case RESOURCE_CRYSTAL_ORE: return GAME_VISUAL_ORE_CRYSTAL;
+        default: return GAME_VISUAL_ORE_GREEN;
+    }
+}
+
+void ResourceNodesDraw(const ResourceNodeSystem *system, const GameVisuals *visuals)
 {
     for (int i = 0; i < system->count; ++i) {
         const ResourceNode *node = &system->nodes[i];
         if (!node->unlocked) continue;
         Color color = ResourceColor(node->resource);
         if (node->amount <= 0.0f) color = Fade(DARKGRAY, 0.5f);
-        DrawCylinder(node->position, 0.42f, 0.52f, 0.5f, 10, Fade(color, 0.75f));
-        DrawSphere(node->position, 0.38f + 0.04f * sinf((float)GetTime() * 3.0f + i), color);
-        DrawSphereWires(node->position, 0.41f, 8, 8, Fade(WHITE, 0.35f));
+        if (!GameVisualsDraw(visuals, ResourceVisual(node->resource), node->position, 0.0f, (Vector3){ 1, 1, 1 }, color)) {
+            DrawCylinder(node->position, 0.42f, 0.52f, 0.5f, 10, Fade(color, 0.75f));
+            DrawSphere(node->position, 0.38f + 0.04f * sinf((float)GetTime() * 3.0f + i), color);
+            DrawSphereWires(node->position, 0.41f, 8, 8, Fade(WHITE, 0.35f));
+        }
     }
 }

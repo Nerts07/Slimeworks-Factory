@@ -372,7 +372,7 @@ static void DrawSilo(Vector3 p, Color color)
     DrawCylinderWires((Vector3){ p.x, p.y + 1.5f, p.z }, 1.2f, 1.2f, 3.0f, 18, DARKGRAY);
 }
 
-static void DrawDistrictDecorations(const Level *level)
+static void DrawDistrictDecorations(const Level *level, const GameVisuals *visuals)
 {
     if (!level->generated) return;
     for (int i = 1; i < level->platformCount; ++i) {
@@ -380,15 +380,20 @@ static void DrawDistrictDecorations(const Level *level)
         Vector3 p = { platform->center.x, platform->top, platform->center.z };
         Color accent = ColorBrightness(platform->color, 0.22f);
         if (i == 1) {
-            DrawCylinder((Vector3){ p.x, p.y + 1.5f, p.z }, 2.2f, 1.6f, 3.0f, 24, accent);
-            DrawSphere((Vector3){ p.x, p.y + 3.25f, p.z }, 1.25f, Fade(WHITE, 0.78f));
+            if (!GameVisualsDraw(visuals, GAME_VISUAL_HUB, p, 0.0f, (Vector3){ 1, 1, 1 }, WHITE)) {
+                DrawCylinder((Vector3){ p.x, p.y + 1.5f, p.z }, 2.2f, 1.6f, 3.0f, 24, accent);
+                DrawSphere((Vector3){ p.x, p.y + 3.25f, p.z }, 1.25f, Fade(WHITE, 0.78f));
+            }
         } else if ((i & 1) == 0) {
-            DrawSlime(p, 1.55f + (float)(i % 3) * 0.25f, accent);
+            if (!GameVisualsDraw(visuals, GAME_VISUAL_SLIME_MASCOT, p, 0.0f, (Vector3){ 1, 1, 1 }, WHITE))
+                DrawSlime(p, 1.55f + (float)(i % 3) * 0.25f, accent);
         } else {
-            DrawSilo(p, accent);
+            if (!GameVisualsDraw(visuals, GAME_VISUAL_SILO, p, 0.0f, (Vector3){ 1, 1, 1 }, WHITE)) DrawSilo(p, accent);
         }
-        DrawCylinder((Vector3){ p.x, p.y + 5.0f, p.z }, 0.15f, 0.15f, 7.0f, 8, accent);
-        DrawSphere((Vector3){ p.x, p.y + 8.7f, p.z }, 0.55f, GOLD);
+        if (!GameVisualsDraw(visuals, GAME_VISUAL_BEACON, p, 0.0f, (Vector3){ 1, 1, 1 }, WHITE)) {
+            DrawCylinder((Vector3){ p.x, p.y + 5.0f, p.z }, 0.15f, 0.15f, 7.0f, 8, accent);
+            DrawSphere((Vector3){ p.x, p.y + 8.7f, p.z }, 0.55f, GOLD);
+        }
     }
     Vector3 gate;
     if (LevelFindMarker(level, "zone_two_gate", &gate)) {
@@ -398,17 +403,20 @@ static void DrawDistrictDecorations(const Level *level)
             sideX = 3.8f;
             sideZ = 0.0f;
         }
-        DrawCylinder((Vector3){ gate.x - sideX, gate.y + 1.5f, gate.z - sideZ }, 0.18f, 0.18f, 3.0f, 10, PINK);
-        DrawCylinder((Vector3){ gate.x + sideX, gate.y + 1.5f, gate.z + sideZ }, 0.18f, 0.18f, 3.0f, 10, PINK);
+        float gateRotation = sideX > 0.0f ? 90.0f : 0.0f;
+        if (!GameVisualsDraw(visuals, GAME_VISUAL_ZONE_GATE, gate, gateRotation, (Vector3){ 1, 1, 1 }, WHITE)) {
+            DrawCylinder((Vector3){ gate.x - sideX, gate.y + 1.5f, gate.z - sideZ }, 0.18f, 0.18f, 3.0f, 10, PINK);
+            DrawCylinder((Vector3){ gate.x + sideX, gate.y + 1.5f, gate.z + sideZ }, 0.18f, 0.18f, 3.0f, 10, PINK);
+        }
         if (!level->zoneTwoUnlocked) DrawSphere((Vector3){ gate.x, gate.y + 2.3f, gate.z }, 1.15f, Fade(RED, 0.48f));
     }
 }
 
-void LevelDraw(const Level *level)
+void LevelDraw(const Level *level, const GameVisuals *visuals)
 {
     for (int i = 0; i < level->platformCount; ++i) DrawPlatform(&level->platforms[i]);
     for (int i = 0; i < level->rampCount; ++i) DrawRamp(&level->ramps[i]);
     for (int i = 0; i < level->boxCount; ++i) if (level->boxes[i].visible) DrawLevelBox(&level->boxes[i]);
     for (int i = 0; i < level->modelCount; ++i) DrawLevelModel(&level->models[i]);
-    DrawDistrictDecorations(level);
+    DrawDistrictDecorations(level, visuals);
 }

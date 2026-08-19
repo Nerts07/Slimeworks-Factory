@@ -28,6 +28,7 @@ void GameStateInit(GameState *state, const Level *level);
 bool GameStateUpdate(GameState *state, float dt);
 bool GameStateTryUnlockZoneTwo(GameState *state);
 bool GameStateCollectRareSlime(GameState *state, Ray ray);
-void GameStateDrawWorld(const GameState *state, bool buildMode, BuildType selected, Vector3 previewPosition, bool previewValid);
+void GameStateDrawWorld(const GameState *state, const GameVisuals *visuals, bool buildMode, BuildType selected,
+                        Vector3 previewPosition, bool previewValid);
 
 #endif
