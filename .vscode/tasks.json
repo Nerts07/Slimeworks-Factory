@@ -1,0 +1,48 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "RaylibGame: build",
+            "type": "shell",
+            "command": "make",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": ["$gcc"],
+            "group": { "kind": "build", "isDefault": true }
+        },
+        {
+            "label": "RaylibGame: run",
+            "type": "shell",
+            "command": "make run",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "RaylibGame: rebuild before launch",
+            "type": "shell",
+            "command": "make clean && make",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "RaylibGame: clang all sources",
+            "type": "shell",
+            "command": "clang -Wall -Wextra -std=c11 -Isrc $(pkg-config --cflags raylib) src/main.c src/core/game.c src/player/player.c src/world/level.c -o main $(pkg-config --libs raylib) -lm",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "C/C++: clang build active file",
+            "type": "shell",
+            "command": "clang -Wall -Wextra -std=c11 -Isrc $(pkg-config --cflags raylib) src/main.c src/core/game.c src/player/player.c src/world/level.c -o main $(pkg-config --libs raylib) -lm",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "C/C++: gcc build active file",
+            "type": "shell",
+            "command": "make",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}

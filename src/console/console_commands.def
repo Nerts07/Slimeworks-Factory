@@ -1,0 +1,8 @@
+CONSOLE_COMMAND(help, "List commands or describe one command", "help [command]", "command?: command name", 0, 1, CommandHelp)
+CONSOLE_COMMAND(give, "Add a resource to your inventory", "give <resource> <amount>", "resource: green|acid|crystal|slime, amount: number", 2, 2, CommandGive)
+CONSOLE_COMMAND(teleport, "Move to a named district", "teleport <location>", "location: hub|ranch|lab|acid|crystal|range", 1, 1, CommandTeleport)
+CONSOLE_COMMAND(save, "Write the current save file", "save", "", 0, 0, CommandSave)
+CONSOLE_COMMAND(load, "Load the current save file", "load", "", 0, 0, CommandLoad)
+CONSOLE_COMMAND(unlock_zone, "Try to unlock Acid Works", "unlock_zone", "", 0, 0, CommandUnlockZone)
+CONSOLE_COMMAND(contract, "Show the active contract", "contract", "", 0, 0, CommandContract)
+CONSOLE_COMMAND(clear, "Clear console output", "clear", "", 0, 0, CommandClear)

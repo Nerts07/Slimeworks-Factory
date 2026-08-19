@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run RaylibGame",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/main",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "RaylibGame: rebuild before launch",
+            "stopAtEntry": false,
+            "externalConsole": false,
+            "MIMode": "lldb"
+        }
+    ]
+}
