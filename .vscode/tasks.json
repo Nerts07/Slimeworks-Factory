@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "RaylibGame: build",
+            "label": "Slimeworks Factory: build",
             "type": "shell",
             "command": "make",
             "options": { "cwd": "${workspaceFolder}" },
@@ -10,21 +10,21 @@
             "group": { "kind": "build", "isDefault": true }
         },
         {
-            "label": "RaylibGame: run",
+            "label": "Slimeworks Factory: run",
             "type": "shell",
             "command": "make run",
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": ["$gcc"]
         },
         {
-            "label": "RaylibGame: rebuild before launch",
+            "label": "Slimeworks Factory: rebuild before launch",
             "type": "shell",
             "command": "make clean && make",
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": ["$gcc"]
         },
         {
-            "label": "RaylibGame: clang all sources",
+            "label": "Slimeworks Factory: clang all sources",
             "type": "shell",
             "command": "clang -Wall -Wextra -std=c11 -Isrc $(pkg-config --cflags raylib) src/main.c src/core/game.c src/player/player.c src/world/level.c -o main $(pkg-config --libs raylib) -lm",
             "options": { "cwd": "${workspaceFolder}" },

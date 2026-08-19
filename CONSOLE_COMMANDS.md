@@ -158,7 +158,7 @@ if (!end || *end != '\0') {
 Собери игру:
 
 ```sh
-cd /Users/isa/Documents/C-Projects/RaylibGame
+cd "/Users/isa/Documents/C-Projects/Slimeworks Factory"
 make clean && make
 ```
 
