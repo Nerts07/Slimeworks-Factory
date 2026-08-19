@@ -1,4 +1,5 @@
 main
+tests/building_network_test
 *.dSYM/
 .DS_Store
 saves/

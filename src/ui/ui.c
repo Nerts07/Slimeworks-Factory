@@ -64,13 +64,34 @@ void UiDrawHud(const Player *player, const GameState *state, bool mouseCaptured,
         DrawText(line, 290, 22, 16, ORANGE);
     }
     if (nearbyBuilding && !buildMode) {
-        DrawPanel(sw - 300, sh - 108, 284, 92);
-        snprintf(line, sizeof(line), "%s L%d — %s", BuildingName(nearbyBuilding->type), nearbyBuilding->level, BuildingStatusText(nearbyBuilding->status));
-        DrawText(line, sw - 284, sh - 94, 16, nearbyBuilding->status == BUILDING_WORKING ? LIME : ORANGE);
-        snprintf(line, sizeof(line), "Green buffer: %.1f   Acid: %.1f", nearbyBuilding->buffer[RESOURCE_GREEN_ORE], nearbyBuilding->buffer[RESOURCE_ACID_ORE]);
-        DrawText(line, sw - 284, sh - 70, 14, LIGHTGRAY);
-        if (nearbyBuilding->type == BUILD_BOOSTER) DrawText("Boosts stations within 3 tiles", sw - 284, sh - 46, 14, GOLD);
-        else DrawText("Build pipes on adjacent grid tiles", sw - 284, sh - 46, 14, LIGHTGRAY);
+        int panelX = sw - 356, panelY = sh - 160;
+        DrawPanel(panelX, panelY, 340, 144);
+        snprintf(line, sizeof(line), "%s L%d", BuildingName(nearbyBuilding->type), nearbyBuilding->level);
+        DrawText(line, panelX + 16, panelY + 14, 18, RAYWHITE);
+        DrawText(BuildingStatusText(nearbyBuilding->status), panelX + 16, panelY + 39, 15,
+                 nearbyBuilding->status == BUILDING_WORKING ? LIME : ORANGE);
+        if (nearbyBuilding->type == BUILD_PUMP) {
+            ResourceType source = nearbyBuilding->sourceResource;
+            snprintf(line, sizeof(line), "Source: %s   Stored: %.1f / %.0f", EconomyResourceName(source),
+                     nearbyBuilding->buffer[source], BUILDING_BUFFER_CAPACITY);
+            DrawText(line, panelX + 16, panelY + 65, 14, LIGHTGRAY);
+            DrawText("Required path: Pump -> Pipes -> Processor", panelX + 16, panelY + 91, 14, SKYBLUE);
+        } else if (nearbyBuilding->type == BUILD_REFINERY) {
+            snprintf(line, sizeof(line), "Green input: %.1f / %.0f", nearbyBuilding->buffer[RESOURCE_GREEN_ORE], BUILDING_BUFFER_CAPACITY);
+            DrawText(line, panelX + 16, panelY + 65, 14, LIGHTGRAY);
+            DrawText("Turns green ore into wallet Slime", panelX + 16, panelY + 91, 14, SKYBLUE);
+        } else if (nearbyBuilding->type == BUILD_MIXER) {
+            snprintf(line, sizeof(line), "Green: %.1f   Acid: %.1f", nearbyBuilding->buffer[RESOURCE_GREEN_ORE], nearbyBuilding->buffer[RESOURCE_ACID_ORE]);
+            DrawText(line, panelX + 16, panelY + 65, 14, LIGHTGRAY);
+            DrawText("Needs both resources through pipes", panelX + 16, panelY + 91, 14, SKYBLUE);
+        } else if (nearbyBuilding->type == BUILD_PIPE) {
+            DrawText("Blue links = connected network", panelX + 16, panelY + 65, 14, LIGHTGRAY);
+            DrawText("Moving colored dot = active transfer", panelX + 16, panelY + 91, 14, SKYBLUE);
+        } else {
+            DrawText("Boosts processors within 3 tiles", panelX + 16, panelY + 65, 14, GOLD);
+            DrawText("No pipe connection required", panelX + 16, panelY + 91, 14, LIGHTGRAY);
+        }
+        DrawText("Red light above a station = needs attention", panelX + 16, panelY + 117, 12, GRAY);
     }
     if (helpOpen) {
         DrawPanel(sw / 2 - 260, sh / 2 - 150, 520, 300);

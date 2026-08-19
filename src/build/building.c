@@ -28,7 +28,10 @@ const char *BuildingName(BuildType type)
 
 const char *BuildingStatusText(BuildingStatus status)
 {
-    static const char *texts[] = { "Working", "Connect a pipe", "Waiting for input", "Output buffer full", "Place near an ore node" };
+    static const char *texts[] = {
+        "Working", "Connect a pipe", "No receiver on this network",
+        "Waiting for input", "Receiver buffer full", "Place near an ore node"
+    };
     return (status >= BUILDING_WORKING && status <= BUILDING_NEEDS_SOURCE) ? texts[status] : "Unknown";
 }
 
@@ -56,10 +59,15 @@ static bool HasPipeNeighbor(const BuildingSystem *system, int index)
     return false;
 }
 
-static int FindConsumerThroughPipes(const BuildingSystem *system, int sourceIndex, ResourceType resource, bool visited[BUILDING_MAX])
+static int FindConsumerThroughPipes(const BuildingSystem *system, int sourceIndex, ResourceType resource,
+                                    int routingCursor, bool visited[BUILDING_MAX], bool *hasConsumer)
 {
     int queue[BUILDING_MAX];
+    int available[BUILDING_MAX];
     int head = 0, tail = 0;
+    int availableCount = 0;
+    bool consumerSeen[BUILDING_MAX] = { false };
+    *hasConsumer = false;
     queue[tail++] = sourceIndex;
     visited[sourceIndex] = true;
     while (head < tail) {
@@ -68,10 +76,13 @@ static int FindConsumerThroughPipes(const BuildingSystem *system, int sourceInde
             if (visited[i] || !IsAdjacent(system->items[current].position, system->items[i].position)) continue;
             const Building *next = &system->items[i];
             if (next->type == BUILD_PIPE) { visited[i] = true; queue[tail++] = i; continue; }
-            if (current != sourceIndex && TypeConsumes(next->type, resource) && next->buffer[resource] < BUILDING_BUFFER_CAPACITY - 0.01f) return i;
+            if (current == sourceIndex || !TypeConsumes(next->type, resource) || consumerSeen[i]) continue;
+            consumerSeen[i] = true;
+            *hasConsumer = true;
+            if (next->buffer[resource] < BUILDING_BUFFER_CAPACITY - 0.01f) available[availableCount++] = i;
         }
     }
-    return -1;
+    return availableCount > 0 ? available[routingCursor % availableCount] : -1;
 }
 
 static void MarkFlow(BuildingSystem *system, const bool visited[BUILDING_MAX], ResourceType resource)
@@ -86,13 +97,19 @@ static void TransferFromPump(BuildingSystem *system, int pumpIndex, ResourceType
 {
     Building *pump = &system->items[pumpIndex];
     bool visited[BUILDING_MAX] = { false };
-    int consumer = FindConsumerThroughPipes(system, pumpIndex, resource, visited);
-    if (consumer < 0) { pump->status = BUILDING_NEEDS_PIPE; return; }
+    bool hasConsumer = false;
+    int routingCursor = (int)pump->progress;
+    int consumer = FindConsumerThroughPipes(system, pumpIndex, resource, routingCursor, visited, &hasConsumer);
+    if (consumer < 0) {
+        pump->status = hasConsumer ? BUILDING_OUTPUT_FULL : BUILDING_NEEDS_DESTINATION;
+        return;
+    }
     float moved = fminf(amount, pump->buffer[resource]);
     moved = fminf(moved, BUILDING_BUFFER_CAPACITY - system->items[consumer].buffer[resource]);
     if (moved <= 0.0f) { pump->status = BUILDING_OUTPUT_FULL; return; }
     pump->buffer[resource] -= moved;
     system->items[consumer].buffer[resource] += moved;
+    pump->progress = (float)((routingCursor + 1) % BUILDING_MAX);
     pump->status = BUILDING_WORKING;
     MarkFlow(system, visited, resource);
 }
@@ -152,10 +169,11 @@ void BuildingsUpdate(BuildingSystem *system, Economy *economy, float dt)
         if (building->type == BUILD_PUMP) {
             if (!HasPipeNeighbor(system, i)) { building->status = BUILDING_NEEDS_PIPE; continue; }
             float room = BUILDING_BUFFER_CAPACITY - building->buffer[building->sourceResource];
-            if (room <= 0.01f) { building->status = BUILDING_OUTPUT_FULL; continue; }
-            building->buffer[building->sourceResource] += fminf(room, 1.6f * multiplier * dt);
+            if (room > 0.01f) building->buffer[building->sourceResource] += fminf(room, 1.6f * multiplier * dt);
+            /* A full pump must still try to transfer. This lets a network recover after pipes are connected later. */
             TransferFromPump(system, i, building->sourceResource, 2.8f * multiplier * dt);
         } else if (building->type == BUILD_REFINERY) {
+            if (!HasPipeNeighbor(system, i)) { building->status = BUILDING_NEEDS_PIPE; continue; }
             if (building->buffer[RESOURCE_GREEN_ORE] <= 0.01f) { building->status = BUILDING_NEEDS_INPUT; continue; }
             float consumed = fminf(building->buffer[RESOURCE_GREEN_ORE], 1.4f * multiplier * dt);
             building->buffer[RESOURCE_GREEN_ORE] -= consumed;
@@ -163,6 +181,7 @@ void BuildingsUpdate(BuildingSystem *system, Economy *economy, float dt)
             building->progress += consumed;
             building->status = BUILDING_WORKING;
         } else if (building->type == BUILD_MIXER) {
+            if (!HasPipeNeighbor(system, i)) { building->status = BUILDING_NEEDS_PIPE; continue; }
             float mix = fminf(building->buffer[RESOURCE_GREEN_ORE] * 0.5f, building->buffer[RESOURCE_ACID_ORE]);
             if (mix <= 0.01f) { building->status = BUILDING_NEEDS_INPUT; continue; }
             float consumedAcid = fminf(mix, 0.75f * multiplier * dt);
@@ -243,6 +262,10 @@ void BuildingsDraw(const BuildingSystem *system, bool buildMode, BuildType selec
         DrawCubeWires((Vector3){ b->position.x, b->position.y + 0.62f, b->position.z }, 0.96f, 0.98f, 0.96f, Fade(WHITE, 0.5f));
         DrawCylinder((Vector3){ b->position.x, b->position.y + 1.26f, b->position.z }, 0.26f, 0.4f, 0.34f, b->type == BUILD_MIXER ? 6 : 12, Fade(WHITE, 0.8f));
         if (b->level > 1) DrawSphere((Vector3){ b->position.x, b->position.y + 1.65f, b->position.z }, 0.14f, GOLD);
+        if (b->status != BUILDING_WORKING) {
+            float pulse = 0.12f + 0.025f * sinf((float)GetTime() * 5.0f);
+            DrawSphere((Vector3){ b->position.x, b->position.y + 1.78f, b->position.z }, pulse, b->status == BUILDING_OUTPUT_FULL ? ORANGE : RED);
+        }
     }
     if (buildMode) {
         Color preview = previewValid ? Fade(BuildingColor(selected), 0.55f) : Fade(RED, 0.55f);

@@ -10,6 +10,18 @@ static void Notify(GameplaySystem *system, const char *message)
     system->notificationSeconds = 2.2f;
 }
 
+static const char *PlacedBuildingMessage(BuildType type)
+{
+    switch (type) {
+        case BUILD_PUMP: return "Pump placed: connect it to a processor with pipes";
+        case BUILD_REFINERY: return "Refinery placed: connect green pump -> pipes -> refinery";
+        case BUILD_MIXER: return "Mixer placed: it needs both green and acid pipe networks";
+        case BUILD_BOOSTER: return "Booster placed: nearby processors run faster";
+        case BUILD_PIPE: return "Pipe placed: blue links show connections, moving dots show flow";
+        default: return "Built";
+    }
+}
+
 static Ray GameplayRay(const GameplaySystem *system)
 {
     return GetScreenToWorldRay((Vector2){ GetScreenWidth() * 0.5f, GetScreenHeight() * 0.5f }, system->playerSystem->camera);
@@ -87,7 +99,7 @@ static void UpdateBuildInput(GameplaySystem *system)
         if (!ContractsAllowsBuild(&system->state->contracts, system->selectedBuild)) Notify(system, "Complete the current contract first");
         else if (system->selectedBuild == BUILD_PUMP && source == RESOURCE_COUNT) Notify(system, "Pump must be beside an ore node");
         else if (GameplayCanPreviewBuilding(system, preview) && BuildingsTryPlace(&system->state->buildings, &system->state->economy, system->selectedBuild, preview, source))
-            Notify(system, system->selectedBuild == BUILD_PIPE ? "Pipe placed: blue line means connected" : "Built");
+            Notify(system, PlacedBuildingMessage(system->selectedBuild));
         else Notify(system, "Cannot build here or not enough ore");
     }
     if (IsKeyPressed(system->bindings.removePipe)) Notify(system, BuildingsTryRemovePipe(&system->state->buildings, &system->state->economy, preview) ? "Pipe removed (+0.5 ore)" : "No pipe nearby");

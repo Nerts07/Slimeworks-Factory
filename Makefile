@@ -3,7 +3,7 @@ RAYLIB_CFLAGS := $(shell pkg-config --cflags raylib 2>/dev/null || echo -I/opt/h
 RAYLIB_LIBS := $(shell pkg-config --libs raylib 2>/dev/null || echo -L/opt/homebrew/opt/raylib/lib -lraylib)
 CFLAGS ?= -Wall -Wextra -Wpedantic -std=c11 -Isrc $(RAYLIB_CFLAGS)
 
-.PHONY: all run clean
+.PHONY: all run test clean
 
 all: main
 
@@ -15,5 +15,11 @@ main: $(SOURCES)
 run: main
 	./main
 
+tests/building_network_test: tests/building_network_test.c src/build/building.c src/build/building.h src/economy/economy.c src/economy/economy.h
+	$(CC) $(CFLAGS) tests/building_network_test.c src/build/building.c src/economy/economy.c -o tests/building_network_test $(RAYLIB_LIBS) -lm
+
+test: tests/building_network_test
+	./tests/building_network_test
+
 clean:
-	rm -f main
+	rm -f main tests/building_network_test
