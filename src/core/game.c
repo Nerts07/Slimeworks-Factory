@@ -1,7 +1,9 @@
 #include "game.h"
 #include "../ui/ui.h"
+#include "../ui/world_selector.h"
 #include <raylib.h>
 #include <math.h>
+#include <stdio.h>
 
 static void GameDraw(const Game *game)
 {
@@ -22,15 +24,19 @@ static void GameDraw(const Game *game)
     EndDrawing();
 }
 
-void GameInit(Game *game)
+static void GameStartSession(Game *game, const WorldChoice *choice)
 {
-    InitWindow(1280, 720, "Slimeworks Factory");
-    SetTargetFPS(60);
+    if (choice->type == WORLD_CHOICE_GENERATED) {
+        LevelGenerate(&game->level, choice->seed);
+    } else if (!LevelLoadFromFile(&game->level, choice->levelPath)) {
+        TraceLog(LOG_WARNING, "Could not load authored level %s; generating a fallback", choice->levelPath);
+        LevelGenerate(&game->level, 24681357u);
+    }
+    char title[128];
+    snprintf(title, sizeof(title), "Slimeworks Factory — %s", game->level.title);
+    SetWindowTitle(title);
     InputGateInit(&game->inputGate);
-    LevelInit(&game->level);
-    /* The editor exports here. Keeping the authored fallback means a fresh clone is still playable. */
-    if (FileExists("levels/factory.levl")) LevelLoadFromFile(&game->level, "levels/factory.levl");
-    GameStateInit(&game->state);
+    GameStateInit(&game->state, &game->level);
     ResourceNodesAlignToLevel(&game->state.nodes, &game->level);
     PlayerSystemInit(&game->playerSystem, &game->level, &game->inputGate, LevelGetSpawnPoint(&game->level));
     GameplaySystemInit(&game->gameplay, &game->state, &game->level, &game->playerSystem, &game->inputGate);
@@ -41,8 +47,24 @@ void GameInit(Game *game)
     UpdateLoopRegister(&game->updateLoop, GameplaySystemUpdate, &game->gameplay);
 }
 
+void GameInit(Game *game)
+{
+    *game = (Game){ 0 };
+    InitWindow(1280, 720, "Slimeworks Factory");
+    SetTargetFPS(60);
+    LevelCatalogRefresh(&game->levelCatalog);
+}
+
 void GameRun(Game *game)
 {
+    WorldSelector selector;
+    WorldSelectorInit(&selector, &game->levelCatalog);
+    while (!WindowShouldClose() && !selector.confirmed && !selector.cancelled) {
+        WorldSelectorUpdate(&selector);
+        WorldSelectorDraw(&selector);
+    }
+    if (WindowShouldClose() || selector.cancelled) return;
+    GameStartSession(game, &selector.choice);
     while (!WindowShouldClose()) {
         float deltaTime = fminf(GetFrameTime(), 0.05f);
         UpdateLoopRun(&game->updateLoop, deltaTime);

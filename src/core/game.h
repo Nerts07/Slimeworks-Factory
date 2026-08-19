@@ -5,10 +5,12 @@
 #include "../console/console.h"
 #include "input_gate.h"
 #include "../world/level.h"
+#include "../world/level_catalog.h"
 #include "update_loop.h"
 
 typedef struct Game {
     Level level;
+    LevelCatalog levelCatalog;
     GameState state;
     InputGate inputGate;
     PlayerSystem playerSystem;

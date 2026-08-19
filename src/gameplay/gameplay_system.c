@@ -118,6 +118,8 @@ void GameplaySystemInit(GameplaySystem *system, GameState *state, Level *level, 
                                 .inputGate = inputGate,
                                 .bindings = GameplayDefaultBindings(), .rules = GameplayDefaultRules(),
                                 .selectedBuild = BUILD_PUMP, .targetedNode = -1 };
+    Vector3 gate;
+    if (LevelFindMarker(level, "zone_two_gate", &gate)) system->rules.gatePosition = gate;
 }
 
 void GameplaySystemUpdate(void *context, float deltaTime)

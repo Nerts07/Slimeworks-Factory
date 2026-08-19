@@ -3,13 +3,21 @@
 
 static const float ZONE_TWO_COST = 55.0f;
 
-void GameStateInit(GameState *state)
+void GameStateInit(GameState *state, const Level *level)
 {
     *state = (GameState){ 0 };
     EconomyInit(&state->economy);
-    ResourceNodesInit(&state->nodes);
+    ResourceNodesInit(&state->nodes, level);
     BuildingsInit(&state->buildings);
     ContractsInit(&state->contracts);
+    state->gatePosition = (Vector3){ 20.0f, 0.0f, -3.0f };
+    state->rareSlimeSpawn = (Vector3){ 38.0f, 0.0f, -43.0f };
+    if (level) {
+        LevelFindMarker(level, "zone_two_gate", &state->gatePosition);
+        LevelFindMarker(level, "rare_slime_spawn", &state->rareSlimeSpawn);
+        state->gatePosition.y = LevelGroundHeight(level, state->gatePosition.x, state->gatePosition.z);
+        state->rareSlimeSpawn.y = LevelGroundHeight(level, state->rareSlimeSpawn.x, state->rareSlimeSpawn.z) + 0.6f;
+    }
     state->rareSlime.nextSpawnTimer = 35.0f;
 }
 
@@ -22,7 +30,7 @@ bool GameStateUpdate(GameState *state, float dt)
         state->rareSlime.nextSpawnTimer -= dt;
         if (state->rareSlime.nextSpawnTimer <= 0.0f && state->zoneTwoUnlocked) {
             state->rareSlime.active = true;
-            state->rareSlime.position = (Vector3){ 38.0f, 6.1f, -43.0f };
+            state->rareSlime.position = state->rareSlimeSpawn;
         }
     }
     return ContractsUpdate(&state->contracts, &state->economy, &state->buildings, state->zoneTwoUnlocked);
@@ -57,8 +65,12 @@ void GameStateDrawWorld(const GameState *state, bool buildMode, BuildType select
     Vector3 objective = { 0.0f, 1.8f, 0.0f };
     if (state->contracts.step == TUTORIAL_HARVEST_GREEN || state->contracts.step == TUTORIAL_PLACE_PUMP)
         objective = state->nodes.nodes[0].position;
-    else if (state->contracts.step == TUTORIAL_UNLOCK_ACID) objective = (Vector3){ 20.0f, 3.5f, -3.0f };
-    else if (state->contracts.step == TUTORIAL_PLACE_MIXER) objective = (Vector3){ 34.0f, 4.6f, 5.0f };
+    else if (state->contracts.step == TUTORIAL_UNLOCK_ACID) objective = state->gatePosition;
+    else if (state->contracts.step == TUTORIAL_PLACE_MIXER) {
+        for (int i = 0; i < state->nodes.count; ++i) {
+            if (state->nodes.nodes[i].resource == RESOURCE_ACID_ORE) { objective = state->nodes.nodes[i].position; break; }
+        }
+    }
     DrawCylinderWires((Vector3){ objective.x, objective.y + 1.2f, objective.z }, 0.38f, 0.38f, 1.2f, 10, GOLD);
     DrawSphere((Vector3){ objective.x, objective.y + 2.0f + 0.15f*sinf((float)GetTime()*4.0f), objective.z }, 0.16f, GOLD);
     if (state->rareSlime.active) {

@@ -22,7 +22,8 @@ typedef struct ResourceNodeSystem {
     int count;
 } ResourceNodeSystem;
 
-void ResourceNodesInit(ResourceNodeSystem *system);
+/* Markers ore_green, ore_acid and ore_crystal override the default node layout. */
+void ResourceNodesInit(ResourceNodeSystem *system, const Level *level);
 void ResourceNodesAlignToLevel(ResourceNodeSystem *system, const Level *level);
 void ResourceNodesUpdate(ResourceNodeSystem *system, float dt, bool zoneTwoUnlocked);
 int ResourceNodesRaycast(const ResourceNodeSystem *system, Ray ray, float maxDistance, float *outDistance);

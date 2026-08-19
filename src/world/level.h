@@ -11,6 +11,7 @@
 #define LEVEL_NAME_LENGTH 32
 #define LEVEL_TAG_LENGTH 32
 #define LEVEL_ASSET_PATH_LENGTH 256
+#define LEVEL_TITLE_LENGTH 64
 
 typedef enum GroundType { GROUND_FLAT, GROUND_STEP, GROUND_RAMP } GroundType;
 typedef struct GroundSample { float height; float slopeDegrees; GroundType type; } GroundSample;
@@ -65,6 +66,9 @@ typedef struct LevelMarker {
 } LevelMarker;
 
 typedef struct Level {
+    char title[LEVEL_TITLE_LENGTH];
+    unsigned int seed;
+    bool generated;
     bool zoneTwoUnlocked;
     LevelPlatform platforms[LEVEL_MAX_PLATFORMS];
     int platformCount;
@@ -80,6 +84,8 @@ typedef struct Level {
 } Level;
 
 void LevelInit(Level *level);
+/* Builds a replayable procedural expedition from a seed. */
+void LevelGenerate(Level *level, unsigned int seed);
 void LevelShutdown(Level *level);
 bool LevelLoadFromFile(Level *level, const char *filePath);
 void LevelDraw(const Level *level);

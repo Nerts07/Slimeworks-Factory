@@ -19,10 +19,12 @@ typedef struct GameState {
     bool zoneTwoUnlocked;
     float sessionSeconds;
     int rareSlimesCollected;
+    Vector3 gatePosition;
+    Vector3 rareSlimeSpawn;
     RareSlime rareSlime;
 } GameState;
 
-void GameStateInit(GameState *state);
+void GameStateInit(GameState *state, const Level *level);
 bool GameStateUpdate(GameState *state, float dt);
 bool GameStateTryUnlockZoneTwo(GameState *state);
 bool GameStateCollectRareSlime(GameState *state, Ray ray);

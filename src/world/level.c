@@ -46,30 +46,87 @@ static int AddCollider(Level *level, Vector3 position, Vector3 size, Color color
     return index;
 }
 
+static void AddMarker(Level *level, const char *name, const char *tag, Vector3 position)
+{
+    if (level->markerCount >= LEVEL_MAX_MARKERS) return;
+    LevelMarker *marker = &level->markers[level->markerCount++];
+    *marker = (LevelMarker){ .position = position };
+    snprintf(marker->name, sizeof(marker->name), "%s", name);
+    snprintf(marker->tag, sizeof(marker->tag), "%s", tag);
+}
+
+static float GeneratedRange(unsigned int *state, float minimum, float maximum)
+{
+    *state = *state * 1664525u + 1013904223u;
+    float unit = (float)((*state >> 8) & 0x00ffffffu) / 16777215.0f;
+    return Lerp(minimum, maximum, unit);
+}
+
+static Vector3 RotateGeneratedPoint(Vector3 point, int turns)
+{
+    switch (turns & 3) {
+        case 1: return (Vector3){ -point.z, point.y, point.x };
+        case 2: return (Vector3){ -point.x, point.y, -point.z };
+        case 3: return (Vector3){ point.z, point.y, -point.x };
+        default: return point;
+    }
+}
+
+void LevelGenerate(Level *level, unsigned int seed)
+{
+    if (seed == 0) seed = 1;
+    *level = (Level){ .gateColliderIndex = -1, .generated = true, .seed = seed };
+    snprintf(level->title, sizeof(level->title), "Generated Expedition %06X", seed & 0x00ffffffu);
+
+    static const Color themes[][7] = {
+        {{ 42, 91, 103, 255 }, { 61, 161, 111, 255 }, { 103, 193, 100, 255 }, { 90, 159, 217, 255 }, { 166, 199, 70, 255 }, { 147, 99, 205, 255 }, { 229, 142, 73, 255 }},
+        {{ 46, 67, 122, 255 }, { 86, 142, 212, 255 }, { 80, 196, 189, 255 }, { 122, 111, 222, 255 }, { 232, 180, 70, 255 }, { 224, 96, 177, 255 }, { 92, 198, 128, 255 }},
+        {{ 86, 82, 112, 255 }, { 93, 187, 137, 255 }, { 202, 140, 78, 255 }, { 77, 181, 204, 255 }, { 214, 203, 90, 255 }, { 181, 106, 218, 255 }, { 236, 116, 114, 255 }}
+    };
+    const Color *colors = themes[seed % 3u];
+    unsigned int randomState = seed;
+    int turns = (int)(seed % 4u);
+    float westTop = GeneratedRange(&randomState, 1.15f, 1.85f);
+    float northTop = GeneratedRange(&randomState, 2.55f, 3.35f);
+    float eastTop = GeneratedRange(&randomState, 1.65f, 2.35f);
+    float crystalTop = GeneratedRange(&randomState, 4.65f, 5.35f);
+    float rangeTop = GeneratedRange(&randomState, 3.65f, 4.35f);
+
+    AddPlatform(level, (Vector3){ 0, 0, 0 }, (Vector2){ 124, 124 }, -1.5f, colors[0]);
+    AddPlatform(level, (Vector3){ 0, 0, 0 }, (Vector2){ 30, 30 }, 0.0f, colors[1]);
+    AddPlatform(level, RotateGeneratedPoint((Vector3){ -40, 0, 5 }, turns), (Vector2){ 32, 34 }, westTop, colors[2]);
+    AddPlatform(level, RotateGeneratedPoint((Vector3){ 0, 0, 40 }, turns), (Vector2){ 34, 30 }, northTop, colors[3]);
+    AddPlatform(level, RotateGeneratedPoint((Vector3){ 40, 0, 0 }, turns), (Vector2){ 32, 30 }, eastTop, colors[4]);
+    AddPlatform(level, RotateGeneratedPoint((Vector3){ 40, 0, -40 }, turns), (Vector2){ 32, 28 }, crystalTop, colors[5]);
+    AddPlatform(level, RotateGeneratedPoint((Vector3){ 40, 0, 40 }, turns), (Vector2){ 30, 28 }, rangeTop, colors[6]);
+
+    AddRamp(level, RotateGeneratedPoint((Vector3){ -14, 0.0f, 4 }, turns), RotateGeneratedPoint((Vector3){ -24, westTop, 4 }, turns), 8.0f, colors[2]);
+    AddRamp(level, RotateGeneratedPoint((Vector3){ 0, 0.0f, 14 }, turns), RotateGeneratedPoint((Vector3){ 0, northTop, 25 }, turns), 8.0f, colors[3]);
+    AddRamp(level, RotateGeneratedPoint((Vector3){ 14, 0.0f, -3 }, turns), RotateGeneratedPoint((Vector3){ 25, eastTop, -3 }, turns), 9.0f, colors[4]);
+    AddRamp(level, RotateGeneratedPoint((Vector3){ 40, eastTop, -14 }, turns), RotateGeneratedPoint((Vector3){ 40, crystalTop, -26 }, turns), 8.0f, colors[5]);
+    AddRamp(level, RotateGeneratedPoint((Vector3){ 40, eastTop, 14 }, turns), RotateGeneratedPoint((Vector3){ 40, rangeTop, 26 }, turns), 8.0f, colors[6]);
+
+    AddCollider(level, RotateGeneratedPoint((Vector3){ 0, 1.5f, 0 }, turns), (Vector3){ 4.5f, 3.0f, 4.5f }, colors[1]);
+    AddCollider(level, RotateGeneratedPoint((Vector3){ -43, westTop + 1.6f, 7 }, turns), (Vector3){ 5.0f, 3.2f, 5.0f }, colors[2]);
+    AddCollider(level, RotateGeneratedPoint((Vector3){ 0, northTop + 2.0f, 43 }, turns), (Vector3){ 5.0f, 4.0f, 5.0f }, colors[3]);
+    Vector3 gateSize = (turns & 1) ? (Vector3){ 8.5f, 3.0f, 0.25f } : (Vector3){ 0.25f, 3.0f, 8.5f };
+    level->gateColliderIndex = AddCollider(level, RotateGeneratedPoint((Vector3){ 20, 1.5f, -3 }, turns), gateSize, colors[5]);
+
+    AddMarker(level, "player_start", "player_spawn", RotateGeneratedPoint((Vector3){ 0, 0, 6 }, turns));
+    AddMarker(level, "green_a", "ore_green", RotateGeneratedPoint((Vector3){ -8, 0, 8 }, turns));
+    AddMarker(level, "green_b", "ore_green", RotateGeneratedPoint((Vector3){ 8, 0, 8 }, turns));
+    AddMarker(level, "green_c", "ore_green", RotateGeneratedPoint((Vector3){ -8, 0, -8 }, turns));
+    AddMarker(level, "green_d", "ore_green", RotateGeneratedPoint((Vector3){ 8, 0, -8 }, turns));
+    AddMarker(level, "acid_a", "ore_acid", RotateGeneratedPoint((Vector3){ 34, 0, 5 }, turns));
+    AddMarker(level, "acid_b", "ore_acid", RotateGeneratedPoint((Vector3){ 47, 0, -6 }, turns));
+    AddMarker(level, "crystal_a", "ore_crystal", RotateGeneratedPoint((Vector3){ 45, 0, -40 }, turns));
+    AddMarker(level, "zone_two_gate", "zone_two_gate", RotateGeneratedPoint((Vector3){ 20, 0, -3 }, turns));
+    AddMarker(level, "rare_slime", "rare_slime_spawn", RotateGeneratedPoint((Vector3){ 38, 0, -43 }, turns));
+}
+
 void LevelInit(Level *level)
 {
-    *level = (Level){ .gateColliderIndex = -1 };
-
-    /* A large lower floor keeps exploration open while raised districts remain readable. */
-    AddPlatform(level, (Vector3){ 0, 0, 0 }, (Vector2){ 124, 124 }, -1.5f, (Color){ 42, 91, 103, 255 });
-    AddPlatform(level, (Vector3){ 0, 0, 0 }, (Vector2){ 30, 30 }, 0.0f, (Color){ 61, 161, 111, 255 });
-    AddPlatform(level, (Vector3){ -40, 0, 5 }, (Vector2){ 32, 34 }, 1.5f, (Color){ 103, 193, 100, 255 });
-    AddPlatform(level, (Vector3){ 0, 0, 40 }, (Vector2){ 34, 30 }, 3.0f, (Color){ 90, 159, 217, 255 });
-    AddPlatform(level, (Vector3){ 40, 0, 0 }, (Vector2){ 32, 30 }, 2.0f, (Color){ 166, 199, 70, 255 });
-    AddPlatform(level, (Vector3){ 40, 0, -40 }, (Vector2){ 32, 28 }, 5.0f, (Color){ 147, 99, 205, 255 });
-    AddPlatform(level, (Vector3){ 40, 0, 40 }, (Vector2){ 30, 28 }, 4.0f, (Color){ 229, 142, 73, 255 });
-
-    AddRamp(level, (Vector3){ -14, 0.0f, 4 }, (Vector3){ -24, 1.5f, 4 }, 8.0f, (Color){ 93, 183, 117, 255 });
-    AddRamp(level, (Vector3){ 0, 0.0f, 14 }, (Vector3){ 0, 3.0f, 25 }, 8.0f, (Color){ 83, 150, 196, 255 });
-    AddRamp(level, (Vector3){ 14, 0.0f, -3 }, (Vector3){ 25, 2.0f, -3 }, 9.0f, (Color){ 147, 191, 72, 255 });
-    AddRamp(level, (Vector3){ 40, 2.0f, -14 }, (Vector3){ 40, 5.0f, -26 }, 8.0f, (Color){ 134, 90, 191, 255 });
-    AddRamp(level, (Vector3){ 40, 2.0f, 14 }, (Vector3){ 40, 4.0f, 26 }, 8.0f, (Color){ 213, 126, 65, 255 });
-
-    /* Purposeful landmarks also act as collision volumes. */
-    AddCollider(level, (Vector3){ 0, 1.5f, 0 }, (Vector3){ 4.5f, 3.0f, 4.5f }, (Color){ 52, 205, 128, 255 });
-    AddCollider(level, (Vector3){ -43, 3.1f, 7 }, (Vector3){ 5.0f, 3.2f, 5.0f }, (Color){ 236, 91, 161, 255 });
-    AddCollider(level, (Vector3){ 0, 5.0f, 43 }, (Vector3){ 5.0f, 4.0f, 5.0f }, (Color){ 83, 166, 232, 255 });
-    level->gateColliderIndex = AddCollider(level, (Vector3){ 20, 1.5f, -3 }, (Vector3){ 0.25f, 3.0f, 8.5f }, (Color){ 236, 76, 151, 255 });
+    LevelGenerate(level, 24681357u);
 }
 
 void LevelShutdown(Level *level)
@@ -317,50 +374,34 @@ static void DrawSilo(Vector3 p, Color color)
 
 static void DrawDistrictDecorations(const Level *level)
 {
-    /* Central factory. */
-    DrawCylinder((Vector3){ 0, 1.5f, 0 }, 2.2f, 1.6f, 3.0f, 24, (Color){ 52, 205, 128, 255 });
-    DrawSphere((Vector3){ 0, 3.25f, 0 }, 1.25f, (Color){ 110, 255, 176, 255 });
-    DrawSilo((Vector3){ -9, 0, -9 }, PINK); DrawSilo((Vector3){ 9, 0, 9 }, SKYBLUE);
-
-    /* West ranch: giant mascot and bouncing-pit markers. */
-    DrawSlime((Vector3){ -43, 1.5f, 7 }, 2.7f, (Color){ 238, 88, 163, 255 });
-    for (int i = 0; i < 6; ++i) {
-        float angle = i * PI / 3.0f;
-        DrawCylinder((Vector3){ -40 + cosf(angle) * 10, 1.75f, 5 + sinf(angle) * 10 }, 0.15f, 0.15f, 0.5f, 8, GOLD);
+    if (!level->generated) return;
+    for (int i = 1; i < level->platformCount; ++i) {
+        const LevelPlatform *platform = &level->platforms[i];
+        Vector3 p = { platform->center.x, platform->top, platform->center.z };
+        Color accent = ColorBrightness(platform->color, 0.22f);
+        if (i == 1) {
+            DrawCylinder((Vector3){ p.x, p.y + 1.5f, p.z }, 2.2f, 1.6f, 3.0f, 24, accent);
+            DrawSphere((Vector3){ p.x, p.y + 3.25f, p.z }, 1.25f, Fade(WHITE, 0.78f));
+        } else if ((i & 1) == 0) {
+            DrawSlime(p, 1.55f + (float)(i % 3) * 0.25f, accent);
+        } else {
+            DrawSilo(p, accent);
+        }
+        DrawCylinder((Vector3){ p.x, p.y + 5.0f, p.z }, 0.15f, 0.15f, 7.0f, 8, accent);
+        DrawSphere((Vector3){ p.x, p.y + 8.7f, p.z }, 0.55f, GOLD);
     }
-
-    /* North lab/market skyline. */
-    DrawSilo((Vector3){ -9, 3, 43 }, BLUE); DrawSilo((Vector3){ 9, 3, 43 }, VIOLET);
-    DrawCube((Vector3){ 0, 5.0f, 43 }, 5.0f, 4.0f, 5.0f, (Color){ 83, 166, 232, 255 });
-    DrawCubeWires((Vector3){ 0, 5.0f, 43 }, 5.1f, 4.1f, 5.1f, WHITE);
-
-    /* East acid works. */
-    for (int i = -1; i <= 1; ++i) {
-        DrawCylinder((Vector3){ 40 + i * 6.0f, 2.35f, 4.5f }, 2.0f, 2.0f, 0.7f, 24, DARKGREEN);
-        DrawCylinder((Vector3){ 40 + i * 6.0f, 2.72f, 4.5f }, 1.75f, 1.75f, 0.08f, 24, LIME);
+    Vector3 gate;
+    if (LevelFindMarker(level, "zone_two_gate", &gate)) {
+        gate.y = LevelGroundHeight(level, gate.x, gate.z);
+        float sideX = 0.0f, sideZ = 3.8f;
+        if (level->gateColliderIndex >= 0 && level->boxes[level->gateColliderIndex].size.x > level->boxes[level->gateColliderIndex].size.z) {
+            sideX = 3.8f;
+            sideZ = 0.0f;
+        }
+        DrawCylinder((Vector3){ gate.x - sideX, gate.y + 1.5f, gate.z - sideZ }, 0.18f, 0.18f, 3.0f, 10, PINK);
+        DrawCylinder((Vector3){ gate.x + sideX, gate.y + 1.5f, gate.z + sideZ }, 0.18f, 0.18f, 3.0f, 10, PINK);
+        if (!level->zoneTwoUnlocked) DrawSphere((Vector3){ gate.x, gate.y + 2.3f, gate.z }, 1.15f, Fade(RED, 0.48f));
     }
-
-    /* Crystal quarry and orange test range. */
-    static const Vector2 crystals[] = { {31,-43}, {36,-34}, {44,-45}, {50,-37}, {43,-52} };
-    for (int i = 0; i < 5; ++i) {
-        DrawCylinder((Vector3){ crystals[i].x, 6.0f, crystals[i].y }, 0.18f, 0.75f, 2.0f + (i%2), 5, VIOLET);
-        DrawSphere((Vector3){ crystals[i].x, 7.2f + (i%2), crystals[i].y }, 0.28f, GOLD);
-    }
-    DrawSlime((Vector3){ 40, 4.0f, 42 }, 2.1f, ORANGE);
-
-    /* Locked neon gate on the east ramp. */
-    DrawCylinder((Vector3){ 20, 1.5f, -7.1f }, 0.18f, 0.18f, 3.0f, 10, PINK);
-    DrawCylinder((Vector3){ 20, 1.5f, 1.1f }, 0.18f, 0.18f, 3.0f, 10, PINK);
-    DrawCube((Vector3){ 20, 3.0f, -3 }, 0.32f, 0.3f, 8.5f, VIOLET);
-    if (!level->zoneTwoUnlocked) DrawCube((Vector3){ 20, 1.5f, -3 }, 0.12f, 2.8f, 7.9f, Fade(RED, 0.48f));
-
-    /* Tall color-coded beacons provide orientation across the large map. */
-    DrawCylinder((Vector3){ -52, 5.0f, -8 }, 0.18f, 0.18f, 7.0f, 8, PINK);
-    DrawSphere((Vector3){ -52, 8.7f, -8 }, 0.65f, GOLD);
-    DrawCylinder((Vector3){ 54, 6.0f, 10 }, 0.18f, 0.18f, 8.0f, 8, LIME);
-    DrawSphere((Vector3){ 54, 10.2f, 10 }, 0.65f, YELLOW);
-    DrawCylinder((Vector3){ 28, 9.0f, -52 }, 0.18f, 0.18f, 8.0f, 8, VIOLET);
-    DrawSphere((Vector3){ 28, 13.2f, -52 }, 0.65f, WHITE);
 }
 
 void LevelDraw(const Level *level)

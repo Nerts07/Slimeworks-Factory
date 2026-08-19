@@ -75,7 +75,8 @@ bool LevelLoadFromFile(Level *level, const char *filePath)
     FILE *file = fopen(filePath, "r");
     if (!file) return false;
 
-    Level parsed = { .gateColliderIndex = -1 };
+    Level parsed = { .gateColliderIndex = -1, .generated = false };
+    CopyString(parsed.title, sizeof(parsed.title), GetFileNameWithoutExt(filePath));
     char directory[512];
     GetLevelDirectory(filePath, directory, sizeof(directory));
     char line[1024];
@@ -92,7 +93,11 @@ bool LevelLoadFromFile(Level *level, const char *filePath)
             continue;
         }
 
-        if (strncmp(line, "LEVEL ", 6) == 0) continue;
+        if (strncmp(line, "LEVEL ", 6) == 0) {
+            char levelName[LEVEL_TITLE_LENGTH];
+            if (sscanf(line, "LEVEL %63s", levelName) == 1) CopyString(parsed.title, sizeof(parsed.title), levelName);
+            continue;
+        }
         if (strcmp(line, "END") == 0) break;
 
         if (strncmp(line, "PLATFORM ", 9) == 0) {
@@ -139,6 +144,7 @@ bool LevelLoadFromFile(Level *level, const char *filePath)
             box->collidable = collidable != 0;
             box->visible = true;
             for (int i = 0; i < 6; ++i) box->faceColors[i] = LIGHTGRAY;
+            if (strcmp(box->tag, "zone_two_gate") == 0) parsed.gateColliderIndex = parsed.boxCount;
             parsed.boxCount++;
             lastBox = box;
             continue;

@@ -13,22 +13,36 @@ static Color ResourceColor(ResourceType type)
 
 static void AddNode(ResourceNodeSystem *system, Vector3 position, ResourceType resource, bool unlocked)
 {
+    if (system->count >= RESOURCE_NODE_MAX) return;
     system->nodes[system->count++] = (ResourceNode){
         .position = position, .resource = resource, .amount = 1.0f, .maxAmount = 1.0f,
         .respawnSeconds = 7.0f, .unlocked = unlocked
     };
 }
 
-void ResourceNodesInit(ResourceNodeSystem *system)
+static int AddNodesFromMarkers(ResourceNodeSystem *system, const Level *level, const char *tag, ResourceType resource, bool unlocked)
+{
+    Vector3 positions[RESOURCE_NODE_MAX];
+    int count = LevelFindMarkersWithTag(level, tag, positions, RESOURCE_NODE_MAX);
+    for (int i = 0; i < count && i < RESOURCE_NODE_MAX; ++i) AddNode(system, positions[i], resource, unlocked);
+    return count;
+}
+
+void ResourceNodesInit(ResourceNodeSystem *system, const Level *level)
 {
     *system = (ResourceNodeSystem){ 0 };
-    AddNode(system, (Vector3){ -8, 0.45f, 8 }, RESOURCE_GREEN_ORE, true);
-    AddNode(system, (Vector3){ 8, 0.45f, 8 }, RESOURCE_GREEN_ORE, true);
-    AddNode(system, (Vector3){ -8, 0.45f, -8 }, RESOURCE_GREEN_ORE, true);
-    AddNode(system, (Vector3){ 8, 0.45f, -8 }, RESOURCE_GREEN_ORE, true);
-    AddNode(system, (Vector3){ 34, 2.45f, 5 }, RESOURCE_ACID_ORE, false);
-    AddNode(system, (Vector3){ 47, 2.45f, -6 }, RESOURCE_ACID_ORE, false);
-    AddNode(system, (Vector3){ 45, 5.45f, -40 }, RESOURCE_CRYSTAL_ORE, false);
+    if (!level || AddNodesFromMarkers(system, level, "ore_green", RESOURCE_GREEN_ORE, true) == 0) {
+        AddNode(system, (Vector3){ -8, 0.45f, 8 }, RESOURCE_GREEN_ORE, true);
+        AddNode(system, (Vector3){ 8, 0.45f, 8 }, RESOURCE_GREEN_ORE, true);
+        AddNode(system, (Vector3){ -8, 0.45f, -8 }, RESOURCE_GREEN_ORE, true);
+        AddNode(system, (Vector3){ 8, 0.45f, -8 }, RESOURCE_GREEN_ORE, true);
+    }
+    if (!level || AddNodesFromMarkers(system, level, "ore_acid", RESOURCE_ACID_ORE, false) == 0) {
+        AddNode(system, (Vector3){ 34, 2.45f, 5 }, RESOURCE_ACID_ORE, false);
+        AddNode(system, (Vector3){ 47, 2.45f, -6 }, RESOURCE_ACID_ORE, false);
+    }
+    if (!level || AddNodesFromMarkers(system, level, "ore_crystal", RESOURCE_CRYSTAL_ORE, false) == 0)
+        AddNode(system, (Vector3){ 45, 5.45f, -40 }, RESOURCE_CRYSTAL_ORE, false);
 }
 
 void ResourceNodesAlignToLevel(ResourceNodeSystem *system, const Level *level)
