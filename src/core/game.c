@@ -24,10 +24,12 @@ static void GameDraw(const Game *game)
 
 void GameInit(Game *game)
 {
-    InitWindow(1280/1.2, 720/1.2, "Slimeworks Factory");
+    InitWindow(1280, 720, "Slimeworks Factory");
     SetTargetFPS(60);
     InputGateInit(&game->inputGate);
     LevelInit(&game->level);
+    /* The editor exports here. Keeping the authored fallback means a fresh clone is still playable. */
+    if (FileExists("levels/factory.levl")) LevelLoadFromFile(&game->level, "levels/factory.levl");
     GameStateInit(&game->state);
     ResourceNodesAlignToLevel(&game->state.nodes, &game->level);
     PlayerSystemInit(&game->playerSystem, &game->level, &game->inputGate, LevelGetSpawnPoint(&game->level));

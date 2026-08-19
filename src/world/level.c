@@ -1,25 +1,48 @@
 #include "level.h"
 #include <math.h>
 #include <raymath.h>
+#include <stdio.h>
 #include <string.h>
+
+static void CopyLabel(char *destination, size_t destinationSize, const char *prefix, int index)
+{
+    snprintf(destination, destinationSize, "%s_%d", prefix, index);
+}
+
+static void SetFaceColors(Color faceColors[6], Color color)
+{
+    for (int i = 0; i < 6; ++i) faceColors[i] = color;
+}
 
 static void AddPlatform(Level *level, Vector3 center, Vector2 size, float top, Color color)
 {
-    if (level->platformCount < LEVEL_MAX_PLATFORMS)
-        level->platforms[level->platformCount++] = (LevelPlatform){ center, size, top, color };
+    if (level->platformCount >= LEVEL_MAX_PLATFORMS) return;
+    LevelPlatform *platform = &level->platforms[level->platformCount];
+    *platform = (LevelPlatform){ .center = center, .size = size, .top = top, .color = color };
+    CopyLabel(platform->name, sizeof(platform->name), "platform", level->platformCount);
+    strcpy(platform->tag, "ground");
+    level->platformCount++;
 }
 
 static void AddRamp(Level *level, Vector3 start, Vector3 end, float width, Color color)
 {
-    if (level->rampCount < LEVEL_MAX_RAMPS)
-        level->ramps[level->rampCount++] = (LevelRamp){ start, end, width, color };
+    if (level->rampCount >= LEVEL_MAX_RAMPS) return;
+    LevelRamp *ramp = &level->ramps[level->rampCount];
+    *ramp = (LevelRamp){ .start = start, .end = end, .width = width, .color = color };
+    CopyLabel(ramp->name, sizeof(ramp->name), "ramp", level->rampCount);
+    strcpy(ramp->tag, "ground_ramp");
+    level->rampCount++;
 }
 
 static int AddCollider(Level *level, Vector3 position, Vector3 size, Color color)
 {
     if (level->boxCount >= LEVEL_MAX_BOXES) return -1;
     int index = level->boxCount;
-    level->boxes[level->boxCount++] = (LevelBox){ position, size, color, true };
+    LevelBox *box = &level->boxes[level->boxCount++];
+    *box = (LevelBox){ .position = position, .size = size, .subdivisions = 1, .collidable = true, .visible = false };
+    CopyLabel(box->name, sizeof(box->name), "collider", index);
+    strcpy(box->tag, "collision");
+    SetFaceColors(box->faceColors, color);
     return index;
 }
 
@@ -51,7 +74,10 @@ void LevelInit(Level *level)
 
 void LevelShutdown(Level *level)
 {
-    (void)level;
+    for (int i = 0; i < level->modelCount; ++i) {
+        if (level->models[i].modelLoaded) UnloadModel(level->models[i].model);
+    }
+    level->modelCount = 0;
 }
 
 static bool PlatformContains(const LevelPlatform *platform, float x, float z)
@@ -101,6 +127,8 @@ float LevelGroundHeight(const Level *level, float x, float z)
 
 Vector3 LevelGetSpawnPoint(const Level *level)
 {
+    Vector3 marker;
+    if (LevelFindMarker(level, "player_spawn", &marker)) return marker;
     Vector3 spawn = { 0.0f, 0.0f, 4.5f };
     spawn.y = LevelGroundHeight(level, spawn.x, spawn.z);
     return spawn;
@@ -108,6 +136,7 @@ Vector3 LevelGetSpawnPoint(const Level *level)
 
 bool LevelGetLandmark(const Level *level, const char *name, Vector3 *outPosition)
 {
+    if (LevelFindMarker(level, name, outPosition)) return true;
     static const struct { const char *name; float x; float z; } landmarks[] = {
         { "hub", 0.0f, 4.5f }, { "ranch", -40.0f, 5.0f }, { "lab", 0.0f, 40.0f },
         { "acid", 40.0f, 0.0f }, { "crystal", 40.0f, -40.0f }, { "range", 40.0f, 40.0f }
@@ -119,12 +148,56 @@ bool LevelGetLandmark(const Level *level, const char *name, Vector3 *outPosition
     return false;
 }
 
+bool LevelFindMarker(const Level *level, const char *nameOrTag, Vector3 *outPosition)
+{
+    for (int i = 0; i < level->markerCount; ++i) {
+        const LevelMarker *marker = &level->markers[i];
+        if (strcmp(marker->name, nameOrTag) == 0 || strcmp(marker->tag, nameOrTag) == 0) {
+            if (outPosition) *outPosition = marker->position;
+            return true;
+        }
+    }
+    return false;
+}
+
+int LevelFindMarkersWithTag(const Level *level, const char *tag, Vector3 *outPositions, int maxPositions)
+{
+    int found = 0;
+    for (int i = 0; i < level->markerCount; ++i) {
+        if (strcmp(level->markers[i].tag, tag) != 0) continue;
+        if (outPositions && found < maxPositions) outPositions[found] = level->markers[i].position;
+        found++;
+    }
+    return found;
+}
+
+const LevelModel *LevelFindModel(const Level *level, const char *nameOrTag)
+{
+    for (int i = 0; i < level->modelCount; ++i) {
+        const LevelModel *model = &level->models[i];
+        if (strcmp(model->name, nameOrTag) == 0 || strcmp(model->tag, nameOrTag) == 0) return model;
+    }
+    return NULL;
+}
+
+int LevelFindModelsWithTag(const Level *level, const char *tag, const LevelModel **outModels, int maxModels)
+{
+    int found = 0;
+    for (int i = 0; i < level->modelCount; ++i) {
+        if (strcmp(level->models[i].tag, tag) != 0) continue;
+        if (outModels && found < maxModels) outModels[found] = &level->models[i];
+        found++;
+    }
+    return found;
+}
+
 bool LevelCollides(const Level *level, float x, float z, float radius)
 {
     if (fabsf(x) > 60.5f - radius || fabsf(z) > 60.5f - radius) return true;
     for (int i = 0; i < level->boxCount; ++i) {
         if (i == level->gateColliderIndex && level->zoneTwoUnlocked) continue;
         const LevelBox *box = &level->boxes[i];
+        if (!box->collidable) continue;
         float cx = Clamp(x, box->position.x - box->size.x * 0.5f, box->position.x + box->size.x * 0.5f);
         float cz = Clamp(z, box->position.z - box->size.z * 0.5f, box->position.z + box->size.z * 0.5f);
         float dx = x - cx, dz = z - cz;
@@ -141,6 +214,70 @@ static void DrawPlatform(const LevelPlatform *platform)
     Vector3 size = { platform->size.x, thickness, platform->size.y };
     DrawCubeV(center, size, platform->color);
     DrawCubeWiresV(center, size, Fade(WHITE, 0.12f));
+}
+
+static Vector3 TransformBoxPoint(const LevelBox *box, Vector3 local)
+{
+    Matrix rotation = MatrixRotateXYZ(Vector3Scale(box->rotation, DEG2RAD));
+    return Vector3Add(Vector3Transform(local, rotation), box->position);
+}
+
+static Vector3 LerpVector3(Vector3 a, Vector3 b, float t)
+{
+    return (Vector3){ Lerp(a.x, b.x, t), Lerp(a.y, b.y, t), Lerp(a.z, b.z, t) };
+}
+
+static void DrawSubdividedQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Color color, int subdivisions)
+{
+    int steps = Clamp(subdivisions, 1, 16);
+    for (int y = 0; y < steps; ++y) {
+        float v0 = (float)y / (float)steps, v1 = (float)(y + 1) / (float)steps;
+        Vector3 left0 = LerpVector3(a, d, v0), right0 = LerpVector3(b, c, v0);
+        Vector3 left1 = LerpVector3(a, d, v1), right1 = LerpVector3(b, c, v1);
+        for (int x = 0; x < steps; ++x) {
+            float u0 = (float)x / (float)steps, u1 = (float)(x + 1) / (float)steps;
+            Vector3 p0 = LerpVector3(left0, right0, u0), p1 = LerpVector3(left0, right0, u1);
+            Vector3 p2 = LerpVector3(left1, right1, u1), p3 = LerpVector3(left1, right1, u0);
+            DrawTriangle3D(p0, p1, p2, color);
+            DrawTriangle3D(p0, p2, p3, color);
+            if (steps > 1) {
+                Color wire = Fade(WHITE, 0.16f);
+                DrawLine3D(p0, p1, wire); DrawLine3D(p1, p2, wire);
+            }
+        }
+    }
+}
+
+static void DrawLevelBox(const LevelBox *box)
+{
+    float hx = box->size.x * 0.5f, hy = box->size.y * 0.5f, hz = box->size.z * 0.5f;
+    float inset = Clamp(box->bevel, 0.0f, fminf(hx, fminf(hy, hz)) * 0.45f);
+    if (inset > 0.001f) {
+        Vector3 center = TransformBoxPoint(box, (Vector3){ 0 });
+        DrawCubeV(center, box->size, Fade(BLACK, 0.45f));
+    }
+    Vector3 faces[6][4] = {
+        {{-hx + inset, hy, -hz + inset}, {hx - inset, hy, -hz + inset}, {hx - inset, hy, hz - inset}, {-hx + inset, hy, hz - inset}},
+        {{-hx + inset, -hy, hz - inset}, {hx - inset, -hy, hz - inset}, {hx - inset, -hy, -hz + inset}, {-hx + inset, -hy, -hz + inset}},
+        {{-hx + inset, -hy + inset, -hz}, {hx - inset, -hy + inset, -hz}, {hx - inset, hy - inset, -hz}, {-hx + inset, hy - inset, -hz}},
+        {{hx - inset, -hy + inset, hz}, {-hx + inset, -hy + inset, hz}, {-hx + inset, hy - inset, hz}, {hx - inset, hy - inset, hz}},
+        {{hx, -hy + inset, -hz + inset}, {hx, -hy + inset, hz - inset}, {hx, hy - inset, hz - inset}, {hx, hy - inset, -hz + inset}},
+        {{-hx, -hy + inset, hz - inset}, {-hx, -hy + inset, -hz + inset}, {-hx, hy - inset, -hz + inset}, {-hx, hy - inset, hz - inset}}
+    };
+    for (int i = 0; i < 6; ++i) {
+        DrawSubdividedQuad(TransformBoxPoint(box, faces[i][0]), TransformBoxPoint(box, faces[i][1]),
+                           TransformBoxPoint(box, faces[i][2]), TransformBoxPoint(box, faces[i][3]),
+                           box->faceColors[i], box->subdivisions);
+    }
+}
+
+static void DrawLevelModel(const LevelModel *levelModel)
+{
+    if (!levelModel->modelLoaded) return;
+    Model model = levelModel->model;
+    Matrix rotation = MatrixRotateXYZ(Vector3Scale(levelModel->rotation, DEG2RAD));
+    model.transform = MatrixMultiply(MatrixScale(levelModel->scale.x, levelModel->scale.y, levelModel->scale.z), rotation);
+    DrawModel(model, levelModel->position, 1.0f, WHITE);
 }
 
 static void DrawRamp(const LevelRamp *ramp)
@@ -230,5 +367,7 @@ void LevelDraw(const Level *level)
 {
     for (int i = 0; i < level->platformCount; ++i) DrawPlatform(&level->platforms[i]);
     for (int i = 0; i < level->rampCount; ++i) DrawRamp(&level->ramps[i]);
+    for (int i = 0; i < level->boxCount; ++i) if (level->boxes[i].visible) DrawLevelBox(&level->boxes[i]);
+    for (int i = 0; i < level->modelCount; ++i) DrawLevelModel(&level->models[i]);
     DrawDistrictDecorations(level);
 }
