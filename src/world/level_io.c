@@ -1,5 +1,7 @@
 #include "level_io.h"
 
+#include <math.h>
+#include <raymath.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,6 +55,30 @@ static void AddModelCollider(Level *level, const LevelModel *model)
     CopyString(collider->name, sizeof(collider->name), model->name);
     CopyString(collider->tag, sizeof(collider->tag), model->tag);
     for (int i = 0; i < 6; ++i) collider->faceColors[i] = BLANK;
+}
+
+static void AddMeshCollider(Level *level, const LevelMesh *mesh)
+{
+    if (!mesh->collidable || mesh->vertexCount <= 0 || level->boxCount >= LEVEL_MAX_BOXES) return;
+    Vector3 minimum = Vector3Add(mesh->position, mesh->vertices[0]);
+    Vector3 maximum = minimum;
+    for (int i = 1; i < mesh->vertexCount; ++i) {
+        Vector3 vertex = Vector3Add(mesh->position, mesh->vertices[i]);
+        if (vertex.x < minimum.x) minimum.x = vertex.x;
+        if (vertex.y < minimum.y) minimum.y = vertex.y;
+        if (vertex.z < minimum.z) minimum.z = vertex.z;
+        if (vertex.x > maximum.x) maximum.x = vertex.x;
+        if (vertex.y > maximum.y) maximum.y = vertex.y;
+        if (vertex.z > maximum.z) maximum.z = vertex.z;
+    }
+    LevelBox *collider = &level->boxes[level->boxCount++];
+    *collider = (LevelBox){
+        .position = Vector3Scale(Vector3Add(minimum, maximum), 0.5f),
+        .size = { fmaxf(0.1f, maximum.x - minimum.x), fmaxf(0.1f, maximum.y - minimum.y), fmaxf(0.1f, maximum.z - minimum.z) },
+        .subdivisions = 1, .collidable = true, .visible = false
+    };
+    CopyString(collider->name, sizeof(collider->name), mesh->name);
+    CopyString(collider->tag, sizeof(collider->tag), mesh->tag);
 }
 
 static bool LoadModelAsset(LevelModel *model, const char *levelDirectory)
@@ -155,6 +181,41 @@ bool LevelLoadFromFile(Level *level, const char *filePath)
             continue;
         }
 
+        if (strncmp(line, "MESH ", 5) == 0) {
+            if (parsed.meshCount >= LEVEL_MAX_MESHES) goto parse_error;
+            LevelMesh *mesh = &parsed.meshes[parsed.meshCount];
+            int collidable, vertexCount, faceCount;
+            if (sscanf(line, "MESH %31s %31s %f %f %f %d %d %d", mesh->name, mesh->tag,
+                       &mesh->position.x, &mesh->position.y, &mesh->position.z, &collidable, &vertexCount, &faceCount) != 8 ||
+                vertexCount < 3 || vertexCount > LEVEL_MESH_MAX_VERTICES || faceCount < 1 || faceCount > LEVEL_MESH_MAX_FACES) goto parse_error;
+            *mesh = (LevelMesh){ .position = mesh->position, .vertexCount = vertexCount, .faceCount = faceCount, .collidable = collidable != 0 };
+            if (sscanf(line, "MESH %31s %31s", mesh->name, mesh->tag) != 2) goto parse_error;
+            for (int vertex = 0; vertex < vertexCount; ++vertex) {
+                if (!fgets(line, sizeof(line), file)) goto parse_error;
+                StripLine(line);
+                if (sscanf(line, "VERTEX %f %f %f", &mesh->vertices[vertex].x, &mesh->vertices[vertex].y, &mesh->vertices[vertex].z) != 3) goto parse_error;
+            }
+            for (int face = 0; face < faceCount; ++face) {
+                int count, a, b, c, d, r, g, blue, alpha;
+                if (!fgets(line, sizeof(line), file)) goto parse_error;
+                StripLine(line);
+                if (sscanf(line, "FACE %d %d %d %d %d %d %d %d %d", &count, &a, &b, &c, &d, &r, &g, &blue, &alpha) != 9 ||
+                    count < 3 || count > LEVEL_MESH_FACE_MAX_VERTICES || a < 0 || b < 0 || c < 0 || d < 0 ||
+                    a >= vertexCount || b >= vertexCount || c >= vertexCount || d >= vertexCount ||
+                    r < 0 || r > 255 || g < 0 || g > 255 || blue < 0 || blue > 255 || alpha < 0 || alpha > 255) goto parse_error;
+                mesh->faces[face] = (LevelMeshFace){ .vertexCount = (unsigned char)count,
+                    .vertices = { (unsigned short)a, (unsigned short)b, (unsigned short)c, (unsigned short)d },
+                    .color = { (unsigned char)r, (unsigned char)g, (unsigned char)blue, (unsigned char)alpha } };
+            }
+            if (!fgets(line, sizeof(line), file)) goto parse_error;
+            StripLine(line);
+            if (strcmp(line, "END_MESH") != 0) goto parse_error;
+            AddMeshCollider(&parsed, mesh);
+            parsed.meshCount++;
+            lastBox = NULL;
+            continue;
+        }
+
         if (strncmp(line, "MODEL ", 6) == 0) {
             if (parsed.modelCount >= LEVEL_MAX_MODELS) goto parse_error;
             LevelModel *model = &parsed.models[parsed.modelCount];
@@ -191,8 +252,8 @@ bool LevelLoadFromFile(Level *level, const char *filePath)
     if (!validHeader) return false;
     LevelShutdown(level);
     *level = parsed;
-    TraceLog(LOG_INFO, "LEVL: loaded %s (%d platforms, %d boxes, %d models, %d markers)", filePath,
-             level->platformCount, level->boxCount, level->modelCount, level->markerCount);
+    TraceLog(LOG_INFO, "LEVL: loaded %s (%d platforms, %d boxes, %d meshes, %d models, %d markers)", filePath,
+             level->platformCount, level->boxCount, level->meshCount, level->modelCount, level->markerCount);
     return true;
 
 parse_error:

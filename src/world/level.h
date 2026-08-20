@@ -8,10 +8,14 @@
 #define LEVEL_MAX_RAMPS 96
 #define LEVEL_MAX_BOXES 256
 #define LEVEL_MAX_MODELS 96
+#define LEVEL_MAX_MESHES 128
 #define LEVEL_MAX_MARKERS 128
 #define LEVEL_NAME_LENGTH 32
 #define LEVEL_TAG_LENGTH 32
 #define LEVEL_ASSET_PATH_LENGTH 256
+#define LEVEL_MESH_MAX_VERTICES 128
+#define LEVEL_MESH_MAX_FACES 128
+#define LEVEL_MESH_FACE_MAX_VERTICES 4
 #define LEVEL_TITLE_LENGTH 64
 
 typedef enum GroundType { GROUND_FLAT, GROUND_STEP, GROUND_RAMP } GroundType;
@@ -60,6 +64,23 @@ typedef struct LevelModel {
     bool modelLoaded;
 } LevelModel;
 
+typedef struct LevelMeshFace {
+    unsigned char vertexCount;
+    unsigned short vertices[LEVEL_MESH_FACE_MAX_VERTICES];
+    Color color;
+} LevelMeshFace;
+
+typedef struct LevelMesh {
+    char name[LEVEL_NAME_LENGTH];
+    char tag[LEVEL_TAG_LENGTH];
+    Vector3 position;
+    Vector3 vertices[LEVEL_MESH_MAX_VERTICES];
+    int vertexCount;
+    LevelMeshFace faces[LEVEL_MESH_MAX_FACES];
+    int faceCount;
+    bool collidable;
+} LevelMesh;
+
 typedef struct LevelMarker {
     char name[LEVEL_NAME_LENGTH];
     char tag[LEVEL_TAG_LENGTH];
@@ -79,6 +100,8 @@ typedef struct Level {
     int boxCount;
     LevelModel models[LEVEL_MAX_MODELS];
     int modelCount;
+    LevelMesh meshes[LEVEL_MAX_MESHES];
+    int meshCount;
     LevelMarker markers[LEVEL_MAX_MARKERS];
     int markerCount;
     int gateColliderIndex;

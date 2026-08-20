@@ -337,6 +337,20 @@ static void DrawLevelModel(const LevelModel *levelModel)
     DrawModel(model, levelModel->position, 1.0f, WHITE);
 }
 
+static void DrawLevelMesh(const LevelMesh *mesh)
+{
+    for (int faceIndex = 0; faceIndex < mesh->faceCount; ++faceIndex) {
+        const LevelMeshFace *face = &mesh->faces[faceIndex];
+        if (face->vertexCount < 3 || face->vertexCount > LEVEL_MESH_FACE_MAX_VERTICES) continue;
+        Vector3 a = Vector3Add(mesh->position, mesh->vertices[face->vertices[0]]);
+        for (int vertex = 1; vertex + 1 < face->vertexCount; ++vertex) {
+            Vector3 b = Vector3Add(mesh->position, mesh->vertices[face->vertices[vertex]]);
+            Vector3 c = Vector3Add(mesh->position, mesh->vertices[face->vertices[vertex + 1]]);
+            DrawTriangle3D(a, b, c, face->color);
+        }
+    }
+}
+
 static void DrawRamp(const LevelRamp *ramp)
 {
     Vector2 delta = { ramp->end.x - ramp->start.x, ramp->end.z - ramp->start.z };
@@ -418,5 +432,6 @@ void LevelDraw(const Level *level, const GameVisuals *visuals)
     for (int i = 0; i < level->rampCount; ++i) DrawRamp(&level->ramps[i]);
     for (int i = 0; i < level->boxCount; ++i) if (level->boxes[i].visible) DrawLevelBox(&level->boxes[i]);
     for (int i = 0; i < level->modelCount; ++i) DrawLevelModel(&level->models[i]);
+    for (int i = 0; i < level->meshCount; ++i) DrawLevelMesh(&level->meshes[i]);
     DrawDistrictDecorations(level, visuals);
 }
