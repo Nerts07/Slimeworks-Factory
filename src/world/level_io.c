@@ -46,41 +46,6 @@ static bool ParseFaceColors(const char *line, Color faceColors[6])
     return true;
 }
 
-static void AddModelCollider(Level *level, const LevelModel *model)
-{
-    if (!model->collidable || level->boxCount >= LEVEL_MAX_BOXES) return;
-    LevelBox *collider = &level->boxes[level->boxCount++];
-    *collider = (LevelBox){ .position = model->position, .size = model->collisionSize,
-                            .subdivisions = 1, .collidable = true, .visible = false };
-    CopyString(collider->name, sizeof(collider->name), model->name);
-    CopyString(collider->tag, sizeof(collider->tag), model->tag);
-    for (int i = 0; i < 6; ++i) collider->faceColors[i] = BLANK;
-}
-
-static void AddMeshCollider(Level *level, const LevelMesh *mesh)
-{
-    if (!mesh->collidable || mesh->vertexCount <= 0 || level->boxCount >= LEVEL_MAX_BOXES) return;
-    Vector3 minimum = Vector3Add(mesh->position, mesh->vertices[0]);
-    Vector3 maximum = minimum;
-    for (int i = 1; i < mesh->vertexCount; ++i) {
-        Vector3 vertex = Vector3Add(mesh->position, mesh->vertices[i]);
-        if (vertex.x < minimum.x) minimum.x = vertex.x;
-        if (vertex.y < minimum.y) minimum.y = vertex.y;
-        if (vertex.z < minimum.z) minimum.z = vertex.z;
-        if (vertex.x > maximum.x) maximum.x = vertex.x;
-        if (vertex.y > maximum.y) maximum.y = vertex.y;
-        if (vertex.z > maximum.z) maximum.z = vertex.z;
-    }
-    LevelBox *collider = &level->boxes[level->boxCount++];
-    *collider = (LevelBox){
-        .position = Vector3Scale(Vector3Add(minimum, maximum), 0.5f),
-        .size = { fmaxf(0.1f, maximum.x - minimum.x), fmaxf(0.1f, maximum.y - minimum.y), fmaxf(0.1f, maximum.z - minimum.z) },
-        .subdivisions = 1, .collidable = true, .visible = false
-    };
-    CopyString(collider->name, sizeof(collider->name), mesh->name);
-    CopyString(collider->tag, sizeof(collider->tag), mesh->tag);
-}
-
 static void EnsureMeshOutwardWinding(LevelMesh *mesh)
 {
     if (!mesh || mesh->vertexCount < 3) return;
@@ -238,7 +203,6 @@ bool LevelLoadFromFile(Level *level, const char *filePath)
             StripLine(line);
             if (strcmp(line, "END_MESH") != 0) goto parse_error;
             EnsureMeshOutwardWinding(mesh);
-            AddMeshCollider(&parsed, mesh);
             parsed.meshCount++;
             lastBox = NULL;
             continue;
@@ -258,7 +222,6 @@ bool LevelLoadFromFile(Level *level, const char *filePath)
             model->collidable = collidable != 0;
             LoadModelAsset(model, directory);
             parsed.modelCount++;
-            AddModelCollider(&parsed, model);
             lastBox = NULL;
             continue;
         }

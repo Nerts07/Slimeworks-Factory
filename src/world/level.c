@@ -161,6 +161,140 @@ static bool RampSample(const LevelRamp *ramp, float x, float z, float *outHeight
     return true;
 }
 
+static float SignedAreaXZ(Vector3 a, Vector3 b, Vector3 c)
+{
+    return (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
+}
+
+static bool PointInTriangleXZ(float x, float z, Vector3 a, Vector3 b, Vector3 c)
+{
+    float area = SignedAreaXZ(a, b, c);
+    if (fabsf(area) < 0.0001f) return false;
+    float w0 = SignedAreaXZ((Vector3){ x, 0, z }, b, c) / area;
+    float w1 = SignedAreaXZ(a, (Vector3){ x, 0, z }, c) / area;
+    float w2 = 1.0f - w0 - w1;
+    return w0 >= -0.001f && w1 >= -0.001f && w2 >= -0.001f;
+}
+
+static bool MeshTriangleGround(Vector3 point, Vector3 a, Vector3 b, Vector3 c, float *height, float *slope)
+{
+    Vector3 normal = Vector3CrossProduct(Vector3Subtract(b, a), Vector3Subtract(c, a));
+    float normalLength = Vector3Length(normal);
+    if (normalLength < 0.0001f || normal.y <= 0.05f || !PointInTriangleXZ(point.x, point.z, a, b, c)) return false;
+    float area = SignedAreaXZ(a, b, c);
+    float w0 = SignedAreaXZ(point, b, c) / area;
+    float w1 = SignedAreaXZ(a, point, c) / area;
+    float w2 = 1.0f - w0 - w1;
+    *height = a.y * w0 + b.y * w1 + c.y * w2;
+    *slope = acosf(Clamp(normal.y / normalLength, -1.0f, 1.0f)) * RAD2DEG;
+    return true;
+}
+
+static bool MeshSampleGround(const LevelMesh *mesh, float x, float z, float *height, float *slope)
+{
+    bool found = false;
+    Vector3 point = { x, 0, z };
+    for (int faceIndex = 0; faceIndex < mesh->faceCount; ++faceIndex) {
+        const LevelMeshFace *face = &mesh->faces[faceIndex];
+        for (int vertex = 1; vertex + 1 < face->vertexCount; ++vertex) {
+            Vector3 a = Vector3Add(mesh->position, mesh->vertices[face->vertices[0]]);
+            Vector3 b = Vector3Add(mesh->position, mesh->vertices[face->vertices[vertex]]);
+            Vector3 c = Vector3Add(mesh->position, mesh->vertices[face->vertices[vertex + 1]]);
+            float candidateHeight, candidateSlope;
+            if (MeshTriangleGround(point, a, b, c, &candidateHeight, &candidateSlope) && (!found || candidateHeight > *height)) {
+                *height = candidateHeight;
+                *slope = candidateSlope;
+                found = true;
+            }
+        }
+    }
+    return found;
+}
+
+static float DistancePointSegmentXZ(float x, float z, Vector3 a, Vector3 b)
+{
+    float dx = b.x - a.x, dz = b.z - a.z;
+    float lengthSquared = dx * dx + dz * dz;
+    float t = lengthSquared > 0.0001f ? ((x - a.x) * dx + (z - a.z) * dz) / lengthSquared : 0.0f;
+    t = Clamp(t, 0.0f, 1.0f);
+    float nearestX = a.x + dx * t, nearestZ = a.z + dz * t;
+    return sqrtf((x - nearestX) * (x - nearestX) + (z - nearestZ) * (z - nearestZ));
+}
+
+static bool MeshCollidesAt(const LevelMesh *mesh, float x, float y, float z, float radius, float height)
+{
+    if (!mesh->collidable) return false;
+    for (int faceIndex = 0; faceIndex < mesh->faceCount; ++faceIndex) {
+        const LevelMeshFace *face = &mesh->faces[faceIndex];
+        for (int vertex = 1; vertex + 1 < face->vertexCount; ++vertex) {
+            Vector3 a = Vector3Add(mesh->position, mesh->vertices[face->vertices[0]]);
+            Vector3 b = Vector3Add(mesh->position, mesh->vertices[face->vertices[vertex]]);
+            Vector3 c = Vector3Add(mesh->position, mesh->vertices[face->vertices[vertex + 1]]);
+            Vector3 normal = Vector3CrossProduct(Vector3Subtract(b, a), Vector3Subtract(c, a));
+            float normalLength = Vector3Length(normal);
+            if (normalLength < 0.0001f || fabsf(normal.y / normalLength) > 0.82f) continue;
+            float minimumY = fminf(a.y, fminf(b.y, c.y)), maximumY = fmaxf(a.y, fmaxf(b.y, c.y));
+            if (y + height < minimumY - 0.05f || y > maximumY + 0.05f) continue;
+            if (DistancePointSegmentXZ(x, z, a, b) <= radius || DistancePointSegmentXZ(x, z, b, c) <= radius ||
+                DistancePointSegmentXZ(x, z, c, a) <= radius || PointInTriangleXZ(x, z, a, b, c)) return true;
+        }
+    }
+    return false;
+}
+
+static Vector3 ModelVertexWorld(const LevelModel *model, const Mesh *mesh, int index)
+{
+    Vector3 local = { mesh->vertices[index * 3], mesh->vertices[index * 3 + 1], mesh->vertices[index * 3 + 2] };
+    Matrix transform = MatrixMultiply(MatrixScale(model->scale.x, model->scale.y, model->scale.z),
+                                      MatrixRotateXYZ(Vector3Scale(model->rotation, DEG2RAD)));
+    return Vector3Add(model->position, Vector3Transform(local, transform));
+}
+
+static bool ModelSampleGround(const LevelModel *model, float x, float z, float *height, float *slope)
+{
+    if (!model->collidable || !model->modelLoaded) return false;
+    bool found = false;
+    Vector3 point = { x, 0, z };
+    for (int meshIndex = 0; meshIndex < model->model.meshCount; ++meshIndex) {
+        const Mesh *mesh = &model->model.meshes[meshIndex];
+        for (int triangle = 0; triangle < mesh->triangleCount; ++triangle) {
+            int i0 = mesh->indices ? mesh->indices[triangle * 3] : triangle * 3;
+            int i1 = mesh->indices ? mesh->indices[triangle * 3 + 1] : triangle * 3 + 1;
+            int i2 = mesh->indices ? mesh->indices[triangle * 3 + 2] : triangle * 3 + 2;
+            Vector3 a = ModelVertexWorld(model, mesh, i0), b = ModelVertexWorld(model, mesh, i1), c = ModelVertexWorld(model, mesh, i2);
+            float candidateHeight, candidateSlope;
+            if (MeshTriangleGround(point, a, b, c, &candidateHeight, &candidateSlope) && (!found || candidateHeight > *height)) {
+                *height = candidateHeight;
+                *slope = candidateSlope;
+                found = true;
+            }
+        }
+    }
+    return found;
+}
+
+static bool ModelCollidesAt(const LevelModel *model, float x, float y, float z, float radius, float height)
+{
+    if (!model->collidable || !model->modelLoaded) return false;
+    for (int meshIndex = 0; meshIndex < model->model.meshCount; ++meshIndex) {
+        const Mesh *mesh = &model->model.meshes[meshIndex];
+        for (int triangle = 0; triangle < mesh->triangleCount; ++triangle) {
+            int i0 = mesh->indices ? mesh->indices[triangle * 3] : triangle * 3;
+            int i1 = mesh->indices ? mesh->indices[triangle * 3 + 1] : triangle * 3 + 1;
+            int i2 = mesh->indices ? mesh->indices[triangle * 3 + 2] : triangle * 3 + 2;
+            Vector3 a = ModelVertexWorld(model, mesh, i0), b = ModelVertexWorld(model, mesh, i1), c = ModelVertexWorld(model, mesh, i2);
+            Vector3 normal = Vector3CrossProduct(Vector3Subtract(b, a), Vector3Subtract(c, a));
+            float normalLength = Vector3Length(normal);
+            if (normalLength < 0.0001f || fabsf(normal.y / normalLength) > 0.82f) continue;
+            float minimumY = fminf(a.y, fminf(b.y, c.y)), maximumY = fmaxf(a.y, fmaxf(b.y, c.y));
+            if (y + height < minimumY - 0.05f || y > maximumY + 0.05f) continue;
+            if (DistancePointSegmentXZ(x, z, a, b) <= radius || DistancePointSegmentXZ(x, z, b, c) <= radius ||
+                DistancePointSegmentXZ(x, z, c, a) <= radius || PointInTriangleXZ(x, z, a, b, c)) return true;
+        }
+    }
+    return false;
+}
+
 GroundSample LevelSampleGround(const Level *level, float x, float z)
 {
     GroundSample sample = { -1.5f, 0.0f, GROUND_FLAT };
@@ -173,6 +307,16 @@ GroundSample LevelSampleGround(const Level *level, float x, float z)
         float height, slope;
         if (RampSample(&level->ramps[i], x, z, &height, &slope) && height >= sample.height - 0.01f)
             sample = (GroundSample){ height, slope, GROUND_RAMP };
+    }
+    for (int i = 0; i < level->meshCount; ++i) {
+        float height = sample.height, slope = 0.0f;
+        if (MeshSampleGround(&level->meshes[i], x, z, &height, &slope) && height >= sample.height - 0.01f)
+            sample = (GroundSample){ height, slope, slope > 0.5f ? GROUND_RAMP : GROUND_FLAT };
+    }
+    for (int i = 0; i < level->modelCount; ++i) {
+        float height = sample.height, slope = 0.0f;
+        if (ModelSampleGround(&level->models[i], x, z, &height, &slope) && height >= sample.height - 0.01f)
+            sample = (GroundSample){ height, slope, slope > 0.5f ? GROUND_RAMP : GROUND_FLAT };
     }
     return sample;
 }
@@ -248,7 +392,7 @@ int LevelFindModelsWithTag(const Level *level, const char *tag, const LevelModel
     return found;
 }
 
-bool LevelCollides(const Level *level, float x, float z, float radius)
+bool LevelCollidesAt(const Level *level, float x, float y, float z, float radius, float height)
 {
     if (fabsf(x) > 60.5f - radius || fabsf(z) > 60.5f - radius) return true;
     for (int i = 0; i < level->boxCount; ++i) {
@@ -260,7 +404,16 @@ bool LevelCollides(const Level *level, float x, float z, float radius)
         float dx = x - cx, dz = z - cz;
         if (dx * dx + dz * dz < radius * radius) return true;
     }
+    for (int i = 0; i < level->meshCount; ++i)
+        if (MeshCollidesAt(&level->meshes[i], x, y, z, radius, height)) return true;
+    for (int i = 0; i < level->modelCount; ++i)
+        if (ModelCollidesAt(&level->models[i], x, y, z, radius, height)) return true;
     return false;
+}
+
+bool LevelCollides(const Level *level, float x, float z, float radius)
+{
+    return LevelCollidesAt(level, x, 0.0f, z, radius, 2.0f);
 }
 
 static void DrawPlatform(const LevelPlatform *platform)

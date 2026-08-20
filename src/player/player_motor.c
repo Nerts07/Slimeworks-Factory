@@ -19,7 +19,8 @@ static bool CanTraverseGround(const Player *player, const Level *level, float ta
 
 static bool TryMoveHorizontal(Player *player, const Level *level, float x, float z)
 {
-    if (LevelCollides(level, x, z, player->config.radius) || !CanTraverseGround(player, level, x, z)) return false;
+    if (LevelCollidesAt(level, x, player->position.y, z, player->config.radius, player->config.eyeHeight) ||
+        !CanTraverseGround(player, level, x, z)) return false;
     player->position.x = x;
     player->position.z = z;
     return true;

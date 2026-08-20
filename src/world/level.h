@@ -122,5 +122,6 @@ int LevelFindModelsWithTag(const Level *level, const char *tag, const LevelModel
 float LevelGroundHeight(const Level *level, float x, float z);
 GroundSample LevelSampleGround(const Level *level, float x, float z);
 bool LevelCollides(const Level *level, float x, float z, float radius);
+bool LevelCollidesAt(const Level *level, float x, float y, float z, float radius, float height);
 
 #endif
