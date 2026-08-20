@@ -4,10 +4,14 @@
 #include <raymath.h>
 #include <stdint.h>
 #include <stdio.h>
+#ifdef _WIN32
+#include <direct.h>
+#else
 #include <sys/stat.h>
+#endif
 
 #define SAVE_MAGIC 0x534C4D31u
-#define SAVE_VERSION 5u
+#define SAVE_VERSION 6u
 #define SAVE_PATH "saves/slimeworks.save"
 
 typedef struct SavedPlayer {
@@ -119,7 +123,11 @@ static void ConvertLegacyState(GameState *destination, const LegacyGameStateV4 *
 bool SaveGameWrite(const GameState *state, const Player *player)
 {
     if (!state || !player) return false;
+#ifdef _WIN32
+    (void)_mkdir("saves");
+#else
     (void)mkdir("saves", 0755);
+#endif
     FILE *file = fopen(SAVE_PATH, "wb");
     if (!file) return false;
     SaveFile data = {

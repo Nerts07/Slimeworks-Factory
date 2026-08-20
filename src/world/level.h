@@ -10,6 +10,7 @@
 #define LEVEL_MAX_MODELS 96
 #define LEVEL_MAX_MESHES 128
 #define LEVEL_MAX_MARKERS 128
+#define LEVEL_MAX_SLIME_VOLUMES 32
 #define LEVEL_NAME_LENGTH 32
 #define LEVEL_TAG_LENGTH 32
 #define LEVEL_ASSET_PATH_LENGTH 256
@@ -87,6 +88,28 @@ typedef struct LevelMarker {
     Vector3 position;
 } LevelMarker;
 
+typedef enum SlimeType {
+    SLIME_TYPE_MOSSDROP,
+    SLIME_TYPE_HONEYKIN,
+    SLIME_TYPE_AZURE_PUFF,
+    SLIME_TYPE_EMBERBUD,
+    SLIME_TYPE_ACIDFLARE,
+    SLIME_TYPE_PRISMCORE,
+    SLIME_TYPE_AURORA_BLOOM,
+    SLIME_TYPE_CROWNSLIME,
+    SLIME_TYPE_COUNT
+} SlimeType;
+
+typedef struct LevelSlimeVolume {
+    char name[LEVEL_NAME_LENGTH];
+    char tag[LEVEL_TAG_LENGTH];
+    Vector3 center;
+    Vector3 size;
+    Vector3 rotation;
+    int slimeCount;
+    SlimeType slimeType;
+} LevelSlimeVolume;
+
 typedef struct Level {
     char title[LEVEL_TITLE_LENGTH];
     unsigned int seed;
@@ -104,6 +127,8 @@ typedef struct Level {
     int meshCount;
     LevelMarker markers[LEVEL_MAX_MARKERS];
     int markerCount;
+    LevelSlimeVolume slimeVolumes[LEVEL_MAX_SLIME_VOLUMES];
+    int slimeVolumeCount;
     int gateColliderIndex;
 } Level;
 
@@ -117,6 +142,8 @@ Vector3 LevelGetSpawnPoint(const Level *level);
 bool LevelGetLandmark(const Level *level, const char *name, Vector3 *outPosition);
 bool LevelFindMarker(const Level *level, const char *nameOrTag, Vector3 *outPosition);
 int LevelFindMarkersWithTag(const Level *level, const char *tag, Vector3 *outPositions, int maxPositions);
+const char *LevelSlimeTypeName(SlimeType type);
+bool LevelSlimeTypeFromName(const char *name, SlimeType *outType);
 const LevelModel *LevelFindModel(const Level *level, const char *nameOrTag);
 int LevelFindModelsWithTag(const Level *level, const char *tag, const LevelModel **outModels, int maxModels);
 float LevelGroundHeight(const Level *level, float x, float z);

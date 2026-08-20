@@ -237,6 +237,29 @@ bool LevelLoadFromFile(Level *level, const char *filePath)
             continue;
         }
 
+        if (strncmp(line, "SLIME_VOLUME ", 13) == 0) {
+            if (parsed.slimeVolumeCount >= LEVEL_MAX_SLIME_VOLUMES) goto parse_error;
+            LevelSlimeVolume *volume = &parsed.slimeVolumes[parsed.slimeVolumeCount];
+            char slimeName[32];
+            int fields = sscanf(line, "SLIME_VOLUME %31s %31s %f %f %f %f %f %f %f %f %f %d %31s", volume->name, volume->tag,
+                       &volume->center.x, &volume->center.y, &volume->center.z,
+                       &volume->size.x, &volume->size.y, &volume->size.z,
+                       &volume->rotation.x, &volume->rotation.y, &volume->rotation.z,
+                       &volume->slimeCount, slimeName);
+            if (fields != 13) {
+                fields = sscanf(line, "SLIME_VOLUME %31s %31s %f %f %f %f %f %f %d %31s", volume->name, volume->tag,
+                       &volume->center.x, &volume->center.y, &volume->center.z,
+                       &volume->size.x, &volume->size.y, &volume->size.z, &volume->slimeCount, slimeName);
+                volume->rotation = (Vector3){ 0 };
+            }
+            if ((fields != 13 && fields != 10) ||
+                volume->size.x <= 0.0f || volume->size.y <= 0.0f || volume->size.z <= 0.0f ||
+                volume->slimeCount < 1 || volume->slimeCount > 64 || !LevelSlimeTypeFromName(slimeName, &volume->slimeType)) goto parse_error;
+            parsed.slimeVolumeCount++;
+            lastBox = NULL;
+            continue;
+        }
+
         goto parse_error;
     }
 
@@ -244,8 +267,8 @@ bool LevelLoadFromFile(Level *level, const char *filePath)
     if (!validHeader) return false;
     LevelShutdown(level);
     *level = parsed;
-    TraceLog(LOG_INFO, "LEVL: loaded %s (%d platforms, %d boxes, %d meshes, %d models, %d markers)", filePath,
-             level->platformCount, level->boxCount, level->meshCount, level->modelCount, level->markerCount);
+    TraceLog(LOG_INFO, "LEVL: loaded %s (%d platforms, %d boxes, %d meshes, %d models, %d markers, %d slime volumes)", filePath,
+             level->platformCount, level->boxCount, level->meshCount, level->modelCount, level->markerCount, level->slimeVolumeCount);
     return true;
 
 parse_error:

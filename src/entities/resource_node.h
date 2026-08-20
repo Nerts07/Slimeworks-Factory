@@ -6,11 +6,12 @@
 #include "../world/level.h"
 #include "../render/game_visuals.h"
 
-#define RESOURCE_NODE_MAX 16
+#define RESOURCE_NODE_MAX 96
 
 typedef struct ResourceNode {
     Vector3 position;
     ResourceType resource;
+    SlimeType slimeType;
     float amount;
     float maxAmount;
     float respawnSeconds;

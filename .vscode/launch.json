@@ -5,12 +5,13 @@
             "name": "Run Slimeworks Factory",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/main",
+            "program": "${workspaceFolder}/Slimeworks-Factory.exe",
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Slimeworks Factory: rebuild before launch",
             "stopAtEntry": false,
             "externalConsole": false,
-            "MIMode": "lldb"
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:/ProgramData/mingw64/mingw64/bin/gdb.exe"
         }
     ]
 }

@@ -3,40 +3,31 @@ SLIMEWORKS_LEVL 1
 LEVEL factory_level
 
 PLATFORM factory_floor ground 0.000 0.000 80.000 80.000 0.000 55 115 102 255
-MARKER player_start player_spawn 12.000 2.000 20.000
+MARKER player_start player_spawn 0.000 0.000 6.000
 BOX starter_factory factory 0.000 1.500 0.000 5.000 3.000 5.000 0.000 0.000 0.000 0.180 1 1
 FACES 126 255 182 255 26 91 72 255 49 196 137 255 65 221 153 255 36 163 114 255 40 177 124 255
-MESH Mesh_4 untagged 19.000 -0.000 19.000 1 12 18
-VERTEX -1.000 -1.000 -1.000
-VERTEX 1.500 -1.250 -1.000
-VERTEX 1.000 4.000 -1.000
-VERTEX -1.000 4.000 -1.000
-VERTEX -1.333 -0.667 3.000
-VERTEX 1.167 -0.917 3.000
-VERTEX 1.000 4.000 1.000
-VERTEX -1.000 4.000 1.000
-VERTEX 0.500 1.250 -1.000
-VERTEX 0.167 1.583 3.000
-VERTEX 1.000 1.500 0.000
-VERTEX -1.000 1.500 0.000
-FACE 4 3 7 6 2 91 188 151 255
-FACE 4 4 0 1 5 91 188 151 255
-FACE 3 0 3 8 8 91 188 151 255
-FACE 3 3 2 8 8 91 188 151 255
-FACE 3 2 1 8 8 91 188 151 255
-FACE 3 1 0 8 8 91 188 151 255
-FACE 3 5 6 9 9 91 188 151 255
-FACE 3 6 7 9 9 91 188 151 255
-FACE 3 7 4 9 9 91 188 151 255
-FACE 3 4 5 9 9 91 188 151 255
-FACE 3 1 2 10 10 91 188 151 255
-FACE 3 2 6 10 10 91 188 151 255
-FACE 3 6 5 10 10 91 188 151 255
-FACE 3 5 1 10 10 91 188 151 255
-FACE 3 4 7 11 11 91 188 151 255
-FACE 3 7 3 11 11 91 188 151 255
-FACE 3 3 0 11 11 91 188 151 255
-FACE 3 0 4 11 11 91 188 151 255
-END_MESH
-MARKER Marker_5 untagged 23.000 0.000 27.000
+SLIME_VOLUME starter_mossdrop_volume slime_spawn 8.000 3.000 8.000 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy slime_spawn -6.738 3.000 6.675 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy slime_spawn 8.000 3.000 -16.100 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -20.401 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -36.504 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -9.177 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 14.112 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 23.341 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -1.496 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -14.061 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -21.641 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -27.423 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -33.775 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -31.168 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -20.386 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -9.023 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 -1.868 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 6.946 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 23.049 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 35.566 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 41.173 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 48.163 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 53.791 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
+SLIME_VOLUME starter_mossdrop_volume_copy_co slime_spawn -6.738 3.000 57.259 12.000 4.000 12.000 -13.112 -83.854 -4.683 6 mossdrop
 END

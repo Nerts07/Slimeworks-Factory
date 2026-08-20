@@ -55,6 +55,36 @@ static void AddMarker(Level *level, const char *name, const char *tag, Vector3 p
     snprintf(marker->tag, sizeof(marker->tag), "%s", tag);
 }
 
+static void AddSlimeVolume(Level *level, const char *name, Vector3 center, Vector3 size, int slimeCount, SlimeType slimeType)
+{
+    if (level->slimeVolumeCount >= LEVEL_MAX_SLIME_VOLUMES) return;
+    LevelSlimeVolume *volume = &level->slimeVolumes[level->slimeVolumeCount++];
+    *volume = (LevelSlimeVolume){ .center = center, .size = size, .slimeCount = slimeCount, .slimeType = slimeType };
+    snprintf(volume->name, sizeof(volume->name), "%s", name);
+    snprintf(volume->tag, sizeof(volume->tag), "slime_spawn");
+}
+
+const char *LevelSlimeTypeName(SlimeType type)
+{
+    static const char *names[SLIME_TYPE_COUNT] = {
+        "mossdrop", "honeykin", "azure_puff", "emberbud",
+        "acidflare", "prismcore", "aurora_bloom", "crownslime"
+    };
+    return type >= 0 && type < SLIME_TYPE_COUNT ? names[type] : names[SLIME_TYPE_MOSSDROP];
+}
+
+bool LevelSlimeTypeFromName(const char *name, SlimeType *outType)
+{
+    if (!name || !outType) return false;
+    for (int type = 0; type < SLIME_TYPE_COUNT; ++type) {
+        if (strcmp(name, LevelSlimeTypeName((SlimeType)type)) == 0) {
+            *outType = (SlimeType)type;
+            return true;
+        }
+    }
+    return false;
+}
+
 static float GeneratedRange(unsigned int *state, float minimum, float maximum)
 {
     *state = *state * 1664525u + 1013904223u;
@@ -113,13 +143,10 @@ void LevelGenerate(Level *level, unsigned int seed)
     level->gateColliderIndex = AddCollider(level, RotateGeneratedPoint((Vector3){ 20, 1.5f, -3 }, turns), gateSize, colors[5]);
 
     AddMarker(level, "player_start", "player_spawn", RotateGeneratedPoint((Vector3){ 0, 0, 6 }, turns));
-    AddMarker(level, "green_a", "ore_green", RotateGeneratedPoint((Vector3){ -8, 0, 8 }, turns));
-    AddMarker(level, "green_b", "ore_green", RotateGeneratedPoint((Vector3){ 8, 0, 8 }, turns));
-    AddMarker(level, "green_c", "ore_green", RotateGeneratedPoint((Vector3){ -8, 0, -8 }, turns));
-    AddMarker(level, "green_d", "ore_green", RotateGeneratedPoint((Vector3){ 8, 0, -8 }, turns));
-    AddMarker(level, "acid_a", "ore_acid", RotateGeneratedPoint((Vector3){ 34, 0, 5 }, turns));
-    AddMarker(level, "acid_b", "ore_acid", RotateGeneratedPoint((Vector3){ 47, 0, -6 }, turns));
-    AddMarker(level, "crystal_a", "ore_crystal", RotateGeneratedPoint((Vector3){ 45, 0, -40 }, turns));
+    AddSlimeVolume(level, "mossdrop_grove", RotateGeneratedPoint((Vector3){ 0, 0, 9 }, turns), (Vector3){ 22, 5, 18 }, 5, SLIME_TYPE_MOSSDROP);
+    AddSlimeVolume(level, "honeykin_grove", RotateGeneratedPoint((Vector3){ -8, 0, -9 }, turns), (Vector3){ 16, 5, 14 }, 3, SLIME_TYPE_HONEYKIN);
+    AddSlimeVolume(level, "acidflare_pool", RotateGeneratedPoint((Vector3){ 39, 0, 3 }, turns), (Vector3){ 22, 6, 18 }, 3, SLIME_TYPE_ACIDFLARE);
+    AddSlimeVolume(level, "prismcore_peak", RotateGeneratedPoint((Vector3){ 40, 0, -40 }, turns), (Vector3){ 20, 8, 18 }, 2, SLIME_TYPE_PRISMCORE);
     AddMarker(level, "zone_two_gate", "zone_two_gate", RotateGeneratedPoint((Vector3){ 20, 0, -3 }, turns));
     AddMarker(level, "rare_slime", "rare_slime_spawn", RotateGeneratedPoint((Vector3){ 38, 0, -43 }, turns));
 }
