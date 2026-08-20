@@ -104,6 +104,7 @@ bool LevelLoadFromFile(Level *level, const char *filePath)
     while (fgets(line, sizeof(line), file)) {
         StripLine(line);
         if (line[0] == '\0' || line[0] == '#') continue;
+        if (strncmp(line, "PARENT ", 7) == 0 || strncmp(line, "EMPTY ", 6) == 0) continue;
         if (!validHeader) {
             int version = 0;
             if (sscanf(line, "SLIMEWORKS_LEVL %d", &version) != 1 || version != 1) goto parse_error;
