@@ -81,6 +81,33 @@ static void AddMeshCollider(Level *level, const LevelMesh *mesh)
     CopyString(collider->tag, sizeof(collider->tag), mesh->tag);
 }
 
+static void EnsureMeshOutwardWinding(LevelMesh *mesh)
+{
+    if (!mesh || mesh->vertexCount < 3) return;
+    Vector3 meshCenter = { 0 };
+    for (int i = 0; i < mesh->vertexCount; ++i) meshCenter = Vector3Add(meshCenter, mesh->vertices[i]);
+    meshCenter = Vector3Scale(meshCenter, 1.0f / (float)mesh->vertexCount);
+    for (int i = 0; i < mesh->faceCount; ++i) {
+        LevelMeshFace *face = &mesh->faces[i];
+        if (face->vertexCount < 3) continue;
+        Vector3 a = mesh->vertices[face->vertices[0]];
+        Vector3 b = mesh->vertices[face->vertices[1]];
+        Vector3 c = mesh->vertices[face->vertices[2]];
+        Vector3 normal = Vector3CrossProduct(Vector3Subtract(b, a), Vector3Subtract(c, a));
+        Vector3 faceCenter = { 0 };
+        for (int vertex = 0; vertex < face->vertexCount; ++vertex)
+            faceCenter = Vector3Add(faceCenter, mesh->vertices[face->vertices[vertex]]);
+        faceCenter = Vector3Scale(faceCenter, 1.0f / (float)face->vertexCount);
+        if (Vector3DotProduct(normal, Vector3Subtract(faceCenter, meshCenter)) < 0.0f) {
+            for (int left = 1, right = face->vertexCount - 1; left < right; ++left, --right) {
+                unsigned short swap = face->vertices[left];
+                face->vertices[left] = face->vertices[right];
+                face->vertices[right] = swap;
+            }
+        }
+    }
+}
+
 static bool LoadModelAsset(LevelModel *model, const char *levelDirectory)
 {
     char fullPath[512];
@@ -210,6 +237,7 @@ bool LevelLoadFromFile(Level *level, const char *filePath)
             if (!fgets(line, sizeof(line), file)) goto parse_error;
             StripLine(line);
             if (strcmp(line, "END_MESH") != 0) goto parse_error;
+            EnsureMeshOutwardWinding(mesh);
             AddMeshCollider(&parsed, mesh);
             parsed.meshCount++;
             lastBox = NULL;
